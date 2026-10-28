@@ -544,9 +544,59 @@ function handleLogin(e) {
 function finalizeLogin() {
     document.getElementById('auth-modal').style.display = 'none';
     document.getElementById('app-wrapper').style.display = 'block';
+    
+    // Automatically bind any pre-assigned station from the database record upon login
+    if (Store.user && Store.user.station && Store.user.station !== 'All' && Store.user.station !== 'Management') {
+        Store.assignedChecklistKey = Store.user.station;
+        Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
+    }
+
     updateGreetingLabel();
     buildNavForRole(Store.role);
-    UIController.refreshActiveView();
+    renderChecklists();
+}
+
+function renderCookChecklistGated() {
+    const container = document.getElementById('checklist-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // If session state is empty, check if Store.user has a saved station from the database
+    if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
+        Store.assignedChecklistKey = Store.user.station;
+        Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
+    }
+
+    if (!Store.assignedStation || !Store.assignedChecklistKey) {
+        container.innerHTML = `
+            <div class="card" style="background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;">
+                <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Cook's Dashboard - Station Access Pending</h3>
+                <p style="color: #92400e; font-size: 0.95rem;">No checklist or station has been assigned to you yet by a Manager or Shift Manager.</p>
+                <p style="color: #78350f; font-size: 0.85rem;">Please contact your shift supervisor to assign your active opening or closing station.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const assignedKey = Store.assignedChecklistKey;
+    const assignedTitle = Store.assignedStation;
+    const specs = CHECKLIST_SPECS[Store.lang]?.[assignedKey] || CHECKLIST_SPECS['en'][assignedKey] || CHECKLIST_SPECS['en']['range_open'];
+
+    const banner = document.createElement('div');
+    banner.className = 'card';
+    banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
+    banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${assignedTitle}</h3><p style="margin:4px 0 0 0;font-size:0.85rem;color:#15803d;">${t('assignedStationSub')}</p>`;
+    container.appendChild(banner);
+
+    specs.forEach(sec => {
+        let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">${sec.phase}</h3>`;
+        sec.tasks.forEach((task, idx) => {
+            html += `<div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;"><input type="checkbox" class="task-checkbox" id="cb-cook-${idx}" style="width:20px;height:20px;cursor:pointer;"><div><div class="task-title" style="font-weight:600; color:#334155;">${task.title}</div><div class="task-desc" style="font-size:0.85rem; color:#64748b;">${task.desc}</div></div></div>`;
+        });
+        container.innerHTML += `<div class="card checklist-section">${html}</div>`;
+    });
+
+    container.innerHTML += `<div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"><button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button></div>`;
 }
 
 function updateGreetingLabel() {
