@@ -1,1060 +1,329 @@
 <!DOCTYPE html>
-
-
 <html lang="en">
-
-
 <head>
-
-
-   <meta charset="UTF-8">
-
-
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-
-   <title>KitchenSync Pro - Restaurant Operations Suite</title>
-
-
-   <style>
-
-
-       :root {
-
-
-           --primary: #1e3a8a;
-
-
-           --primary-hover: #172554;
-
-
-           --success: #16a34a;
-
-
-           --bg-light: #f8fafc;
-
-
-           --border-color: #cbd5e1;
-
-
-           --text-main: #334155;
-
-
-           --text-muted: #64748b;
-
-
-       }
-
-
-
-
-
-
-       body {
-
-
-           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-
-
-           background-color: var(--bg-light);
-
-
-           color: var(--text-main);
-
-
-           margin: 0;
-
-
-           padding: 0;
-
-
-       }
-
-
-
-
-
-
-       /* Authentication Modal */
-
-
-       #auth-modal {
-
-
-           position: fixed;
-
-
-           top: 0;
-
-
-           left: 0;
-
-
-           width: 100%;
-
-
-           height: 100%;
-
-
-           background: rgba(15, 23, 42, 0.75);
-
-
-           display: flex;
-
-
-           justify-content: center;
-
-
-           align-items: center;
-
-
-           z-index: 1000;
-
-
-       }
-
-
-
-
-
-
-       .auth-card {
-
-
-           background: white;
-
-
-           padding: 2.5rem;
-
-
-           border-radius: 12px;
-
-
-           box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-
-
-           width: 100%;
-
-
-           max-width: 400px;
-
-
-           text-align: center;
-
-
-       }
-
-
-
-
-
-
-       .auth-card h2 {
-
-
-           color: var(--primary);
-
-
-           margin-top: 0;
-
-
-           margin-bottom: 0.5rem;
-
-
-       }
-
-
-
-
-
-
-       .auth-card p {
-
-
-           color: var(--text-muted);
-
-
-           font-size: 0.9rem;
-
-
-           margin-bottom: 1.5rem;
-
-
-       }
-
-
-
-
-
-
-       /* App Layout */
-
-
-       #app-wrapper {
-
-
-           display: none;
-
-
-           max-width: 1200px;
-
-
-           margin: 0 auto;
-
-
-           padding: 1.5rem;
-
-
-       }
-
-
-
-
-
-
-       header {
-
-
-           background: white;
-
-
-           padding: 1rem 1.5rem;
-
-
-           border-radius: 8px;
-
-
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-
-
-           display: flex;
-
-
-           justify-content: space-between;
-
-
-           align-items: center;
-
-
-           margin-bottom: 1.5rem;
-
-
-       }
-
-
-
-
-
-
-       .header-title h1 {
-
-
-           margin: 0;
-
-
-           font-size: 1.4rem;
-
-
-           color: var(--primary);
-
-
-       }
-
-
-
-
-
-
-       .header-title span {
-
-
-           font-size: 0.85rem;
-
-
-           color: var(--text-muted);
-
-
-       }
-
-
-
-
-
-
-       .header-actions {
-
-
-           display: flex;
-
-
-           gap: 10px;
-
-
-           align-items: center;
-
-
-       }
-
-
-
-
-
-
-       /* Navigation Tabs */
-
-
-       .nav-tabs {
-
-
-           display: flex;
-
-
-           gap: 8px;
-
-
-           background: white;
-
-
-           padding: 0.75rem;
-
-
-           border-radius: 8px;
-
-
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-
-
-           margin-bottom: 1.5rem;
-
-
-           overflow-x: auto;
-
-
-       }
-
-
-
-
-
-
-       .tab-btn {
-
-
-           background: #f1f5f9;
-
-
-           border: none;
-
-
-           padding: 0.6rem 1rem;
-
-
-           border-radius: 6px;
-
-
-           font-weight: 600;
-
-
-           color: var(--text-muted);
-
-
-           cursor: pointer;
-
-
-           white-space: nowrap;
-
-
-           transition: all 0.2s;
-
-
-       }
-
-
-
-
-
-
-       .tab-btn.active {
-
-
-           background: var(--primary);
-
-
-           color: white;
-
-
-       }
-
-
-
-
-
-
-       .tab-btn:hover:not(.active) {
-
-
-           background: #e2e8f0;
-
-
-           color: var(--text-main);
-
-
-       }
-
-
-
-
-
-
-       /* Views */
-
-
-       .app-view {
-
-
-           display: none;
-
-
-       }
-
-
-
-
-
-
-       .app-view.active {
-
-
-           display: block;
-
-
-       }
-
-
-
-
-
-
-       /* Cards & UI Elements */
-
-
-       .card {
-
-
-           background: white;
-
-
-           padding: 1.5rem;
-
-
-           border-radius: 8px;
-
-
-           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-
-
-           margin-bottom: 1.25rem;
-
-
-           border: 1px solid #e2e8f0;
-
-
-       }
-
-
-
-
-
-
-       .btn {
-
-
-           padding: 0.6rem 1.2rem;
-
-
-           border-radius: 6px;
-
-
-           font-weight: 600;
-
-
-           cursor: pointer;
-
-
-           border: none;
-
-
-           transition: background 0.2s;
-
-
-       }
-
-
-
-
-
-
-       .btn-primary {
-
-
-           background: var(--primary);
-
-
-           color: white;
-
-
-       }
-
-
-
-
-
-
-       .btn-primary:hover {
-
-
-           background: var(--primary-hover);
-
-
-       }
-
-
-
-
-
-
-       .btn-secondary {
-
-
-           background: #e2e8f0;
-
-
-           color: var(--text-main);
-
-
-       }
-
-
-
-
-
-
-       .btn-secondary:hover {
-
-
-           background: #cbd5e1;
-
-
-       }
-
-
-
-
-
-
-       .form-control {
-
-
-           width: 100%;
-
-
-           padding: 0.65rem;
-
-
-           border: 1px solid var(--border-color);
-
-
-           border-radius: 6px;
-
-
-           font-size: 0.95rem;
-
-
-           box-sizing: border-box;
-
-
-           margin-bottom: 1rem;
-
-
-       }
-
-
-
-
-
-
-       /* Tables */
-
-
-       .data-table {
-
-
-           width: 100%;
-
-
-           border-collapse: collapse;
-
-
-           margin-top: 0.5rem;
-
-
-           font-size: 0.9rem;
-
-
-       }
-
-
-
-
-
-
-       .data-table th, .data-table td {
-
-
-           padding: 0.75rem;
-
-
-           text-align: left;
-
-
-           border-bottom: 1px solid #e2e8f0;
-
-
-       }
-
-
-
-
-
-
-       .data-table th {
-
-
-           background: #f8fafc;
-
-
-           color: var(--primary);
-
-
-           font-weight: 600;
-
-
-       }
-
-
-
-
-
-
-       /* Score Summary Box */
-
-
-       .score-box {
-
-
-           display: flex;
-
-
-           justify-content: space-between;
-
-
-           align-items: center;
-
-
-           background: #f0fdf4;
-
-
-           border: 1px solid #bbf7d0;
-
-
-           padding: 1rem 1.5rem;
-
-
-           border-radius: 8px;
-
-
-           margin-bottom: 1.25rem;
-
-
-       }
-
-
-   </style>
-
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KitchenSync Pro - Restaurant Operations Suite</title>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-hover: #172554;
+            --success: #16a34a;
+            --bg-light: #f8fafc;
+            --border-color: #cbd5e1;
+            --text-main: #334155;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Authentication Modal */
+        #auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .auth-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .auth-card h2 {
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* App Layout */
+        #app-wrapper {
+            display: none;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        header {
+            background: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: var(--primary);
+        }
+
+        .header-title span {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: #f1f5f9;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        /* Views */
+        .app-view {
+            display: none;
+        }
+
+        .app-view.active {
+            display: block;
+        }
+
+        /* Cards & UI Elements */
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.25rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.65rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .data-table th, .data-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Score Summary Box */
+        .score-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+        }
+    </style>
 </head>
-
-
 <body>
 
-
-
-
-
-
-   <!-- AUTHENTICATION LOGIN MODAL -->
-
-
-   <div id="auth-modal">
-
-
-       <div class="auth-card">
-
-
-           <h2>KitchenSync Pro</h2>
-
-
-           <p>Enter your employee PIN or Manager Passcode</p>
-
-
-           <form onsubmit="handleLogin(event)">
-
-
-               <input type="password" id="auth-password" class="form-control" placeholder="PIN / Passcode" required autofocus>
-
-
-               <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In 🚀</button>
-
-
-           </form>
-
-
-       </div>
-
-
-   </div>
-
-
-
-
-
-
-   <!-- MAIN APP WRAPPER -->
-
-
-   <div id="app-wrapper">
-
-
-       <!-- HEADER -->
-
-
-       <header>
-
-
-           <div class="header-title">
-
-
-               <h1>KitchenSync Pro</h1>
-
-
-               <span id="logged-in-user-label">Loading user session...</span>
-
-
-           </div>
-
-
-           <div class="header-actions">
-
-
-               <button id="lang-toggle-btn" class="btn btn-secondary" onclick="toggleLanguage()">🇪🇸 Español</button>
-
-
-               <button class="btn btn-secondary" onclick="logoutSession()" style="color: #dc2626;">Sign Out 🚪</button>
-
-
-           </div>
-
-
-       </header>
-
-
-
-
-
-
-       <!-- NAVIGATION TABS -->
-
-
-       <nav id="nav-tabs-container" class="nav-tabs">
-
-
-           <!-- Dynamically generated based on user role -->
-
-
-       </nav>
-
-
-
-
-
-
-       <!-- VIEW: SHIFT CHECKLIST -->
-
-
-       <div id="view-shift-entry" class="app-view">
-
-
-           <div id="cook-station-selector-widget"></div>
-
-
-           <div class="score-box">
-
-
-               <div>
-
-
-                   <span style="font-size: 0.85rem; color: #166534; font-weight: 600;">COMPLETED TASKS</span>
-
-
-                   <div id="score-tasks-count" style="font-size: 1.2rem; font-weight: bold; color: #166534;">0 / 0</div>
-
-
-               </div>
-
-
-               <div>
-
-
-                   <span style="font-size: 0.85rem; color: #166534; font-weight: 600;">COMPLIANCE SCORE</span>
-
-
-                   <div id="score-percentage" style="font-size: 1.5rem; font-weight: bold; color: #166534;">0%</div>
-
-
-               </div>
-
-
-           </div>
-
-
-           <div id="checklist-container"></div>
-
-
-           <div style="margin-top: 1.5rem; display: flex; gap: 10px;">
-
-
-               <button class="btn btn-primary" onclick="submitShiftChecklist()">💾 Save & Submit Shift Checklist</button>
-
-
-           </div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: COOK DASHBOARD -->
-
-
-       <div id="view-cook-dashboard" class="app-view">
-
-
-           <div id="cook-dashboard-content"></div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: MANAGER DASHBOARD -->
-
-
-       <div id="view-manager-dashboard" class="app-view">
-
-
-           <div id="manager-dashboard-content"></div>
-
-
-           <!-- Embedded 6-Channel Message Board for Managers -->
-
-
-           <div id="message-board-container" style="margin-top: 1.5rem;"></div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: GENERAL MANAGER SUITE -->
-
-
-       <div id="view-gm-dashboard" class="app-view">
-
-
-           <div id="gm-dashboard-content"></div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: TRAINING & CERTIFICATIONS -->
-
-
-       <div id="view-cook-training" class="app-view">
-
-
-           <div class="card">
-
-
-               <h3 id="training-view-heading" style="color: var(--primary); margin-top: 0;">Training Modules & Mandatory Certifications</h3>
-
-
-               <p style="font-size: 0.85rem; color: var(--text-muted);">Complete all training modules with an 85% or higher score and earn your General Manager sign-off to achieve Certified Team Leader status.</p>
-
-
-           </div>
-
-
-           <div id="training-modules-list"></div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: RECIPE & PREP BOOK -->
-
-
-       <div id="view-recipe-book" class="app-view">
-
-
-           <div id="recipe-book-container"></div>
-
-
-       </div>
-
-
-
-
-
-
-       <!-- VIEW: STAFF ROSTER -->
-
-
-       <div id="view-roster" class="app-view">
-
-
-           <div class="card">
-
-
-               <h3 style="color: var(--primary); margin-top: 0;">👥 Staff Roster & Onboarding Directory</h3>
-
-
-               <table class="data-table">
-
-
-                   <thead>
-
-
-                       <tr>
-
-
-                           <th>ID</th>
-
-
-                           <th>Name</th>
-
-
-                           <th>Role</th>
-
-
-                           <th>Assigned Station</th>
-
-
-                           <th>Hourly Rate</th>
-
-
-                       </tr>
-
-
-                   </thead>
-
-
-                   <tbody id="roster-table-body">
-
-
-                       <!-- Dynamically populated -->
-
-
-                   </tbody>
-
-
-               </table>
-
-
-           </div>
-
-
-       </div>
-
-
-   </div>
-
-
-
-
-
-
-   <!-- QUIZ MODAL -->
-
-
-   <div id="quiz-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); justify-content: center; align-items: center; z-index: 1001;">
-
-
-       <div class="auth-card" style="max-width: 600px; text-align: left; max-height: 85vh; overflow-y: auto;">
-
-
-           <h3 id="quiz-modal-title" style="color: var(--primary); margin-top: 0;">Training Quiz</h3>
-
-
-           <div id="quiz-modal-body" style="margin: 1.5rem 0;"></div>
-
-
-           <div style="display: flex; justify-content: flex-end; gap: 10px;">
-
-
-               <button class="btn btn-secondary" onclick="closeQuizModal()">Cancel</button>
-
-
-               <button class="btn btn-primary" onclick="submitQuizAnswers()">Submit Quiz Answers ✍️</button>
-
-
-           </div>
-
-
-       </div>
-
-
-   </div>
-
-
-
-
-
-
-   <!-- LINK THE REBUILT MAIN.JS SCRIPT -->
-
-
-<script src="static/js/main.js"></script>
-
-
+    <!-- AUTHENTICATION LOGIN MODAL -->
+    <div id="auth-modal">
+        <div class="auth-card">
+            <h2>KitchenSync Pro</h2>
+            <p>Enter your employee PIN or Manager Passcode</p>
+            <form onsubmit="handleLogin(event)">
+                <input type="password" id="auth-password" class="form-control" placeholder="PIN / Passcode" required autofocus>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In 🚀</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER -->
+    <div id="app-wrapper">
+        <!-- HEADER -->
+        <header>
+            <div class="header-title">
+                <h1>KitchenSync Pro</h1>
+                <span id="logged-in-user-label">Loading user session...</span>
+            </div>
+            <div class="header-actions">
+                <button id="lang-toggle-btn" class="btn btn-secondary" onclick="toggleLanguage()">🇪🇸 Español</button>
+                <button class="btn btn-secondary" onclick="logoutSession()" style="color: #dc2626;">Sign Out 🚪</button>
+            </div>
+        </header>
+
+        <!-- NAVIGATION TABS -->
+        <nav id="nav-tabs-container" class="nav-tabs">
+            <!-- Dynamically generated based on user role -->
+        </nav>
+
+        <!-- VIEW: SHIFT CHECKLIST -->
+        <div id="view-shift-entry" class="app-view">
+            <div id="cook-station-selector-widget"></div>
+            <div id="checklist-container"></div>
+        </div>
+
+        <!-- VIEW: COOK DASHBOARD -->
+        <div id="view-cook-dashboard" class="app-view">
+            <div id="cook-dashboard-content"></div>
+        </div>
+
+        <!-- VIEW: MANAGER DASHBOARD -->
+        <div id="view-manager-dashboard" class="app-view">
+            <div id="manager-dashboard-content"></div>
+            <!-- Embedded 6-Channel Message Board for Managers -->
+            <div id="message-board-container" style="margin-top: 1.5rem;"></div>
+        </div>
+
+        <!-- VIEW: GENERAL MANAGER SUITE -->
+        <div id="view-gm-dashboard" class="app-view">
+            <div id="gm-dashboard-content"></div>
+        </div>
+
+        <!-- VIEW: TRAINING & CERTIFICATIONS -->
+        <div id="view-cook-training" class="app-view">
+            <div class="card">
+                <h3 id="training-view-heading" style="color: var(--primary); margin-top: 0;">Training Modules & Mandatory Certifications</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Complete all training modules with an 85% or higher score and earn your General Manager sign-off to achieve Certified Team Leader status.</p>
+            </div>
+            <div id="training-modules-list"></div>
+        </div>
+
+        <!-- VIEW: RECIPE & PREP BOOK -->
+        <div id="view-recipe-book" class="app-view">
+            <div id="recipe-book-container"></div>
+        </div>
+
+        <!-- VIEW: STAFF ROSTER -->
+        <div id="view-roster" class="app-view">
+            <div class="card">
+                <h3 style="color: var(--primary); margin-top: 0;">👥 Staff Roster & Onboarding Directory</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Assigned Station</th>
+                            <th>Hourly Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roster-table-body">
+                        <!-- Dynamically populated -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- QUIZ MODAL -->
+    <div id="quiz-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); justify-content: center; align-items: center; z-index: 1001;">
+        <div class="auth-card" style="max-width: 600px; text-align: left; max-height: 85vh; overflow-y: auto;">
+            <h3 id="quiz-modal-title" style="color: var(--primary); margin-top: 0;">Training Quiz</h3>
+            <div id="quiz-modal-body" style="margin: 1.5rem 0;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-secondary" onclick="closeQuizModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitQuizAnswers()">Submit Quiz Answers ✍️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LINK THE REBUILT MAIN.JS SCRIPT -->
+    <script src="static/js/main.js"></script>
 </body>
-
-
 </html>
