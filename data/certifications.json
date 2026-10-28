@@ -1,0 +1,37 @@
+[
+  {
+    "empId": "EMP-101",
+    "modId": "BOH-TR-01",
+    "score": 100,
+    "passed": true,
+    "managerSignOff": true
+  },
+  {
+    "empId": "EMP-101",
+    "modId": "BOH-TR-02",
+    "score": 100,
+    "passed": true,
+    "managerSignOff": true
+  },
+  {
+    "empId": "EMP-101",
+    "modId": "BOH-TR-03",
+    "score": 100,
+    "passed": true,
+    "managerSignOff": true
+  },
+  {
+    "empId": "EMP-101",
+    "modId": "BOH-TR-04",
+    "score": 100,
+    "passed": true,
+    "managerSignOff": true
+  },
+  {
+    "empId": "EMP-101",
+    "modId": "BOH-TR-05",
+    "score": 100,
+    "passed": true,
+    "managerSignOff": true
+  }
+]

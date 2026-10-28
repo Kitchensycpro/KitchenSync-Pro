@@ -1,0 +1,30 @@
+[
+  {
+    "empId": "EMP-101",
+    "empName": "Tim King",
+    "role": "cook",
+    "managerOnDuty": "Not Specified",
+    "date": "2026-10-21",
+    "timeSlot": "Standard Cook Shift",
+    "tasksCompleted": 12,
+    "totalTasks": 12,
+    "scorePct": 100,
+    "notes": {},
+    "id": "LOG-1001"
+  },
+  {
+    "empId": "EMP-102",
+    "empName": "Eustacio P",
+    "role": "cook",
+    "managerOnDuty": "Not Specified",
+    "date": "2026-10-21",
+    "timeSlot": "Standard Cook Shift",
+    "tasksCompleted": 11,
+    "totalTasks": 12,
+    "scorePct": 92,
+    "notes": {
+      "c11": "The low boy refrigeration was not cleaned out."
+    },
+    "id": "LOG-1002"
+  }
+]

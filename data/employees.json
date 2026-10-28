@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Tim King",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2169",
+    "hourlyRate": 22,
+    "id": "EMP-101",
+    "active": true
+  },
+  {
+    "name": "Eustacio P",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2170",
+    "hourlyRate": 21,
+    "id": "EMP-102",
+    "active": true
+  },
+  {
+    "name": "David B",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2171",
+    "hourlyRate": 21,
+    "id": "EMP-103",
+    "active": true
+  },
+  {
+    "name": "Alex G",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2172",
+    "hourlyRate": 22,
+    "id": "EMP-104",
+    "active": true
+  },
+  {
+    "name": "Yelitza S",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2173",
+    "hourlyRate": 19,
+    "id": "EMP-105",
+    "active": true
+  },
+  {
+    "name": "Amilcar P",
+    "role": "cook",
+    "station": "Grill/Line",
+    "pin": "2174",
+    "hourlyRate": 22,
+    "id": "EMP-106",
+    "active": true
+  }
+]

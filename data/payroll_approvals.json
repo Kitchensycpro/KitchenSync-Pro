@@ -1,0 +1,10 @@
+[
+  {
+    "empId": "EMP-101",
+    "empName": "Tim King",
+    "role": "cook",
+    "bonusAmt": 150,
+    "tierLabel": "Tier 3",
+    "dateApproved": "2026-10-21T18:54:10.325Z"
+  }
+]
