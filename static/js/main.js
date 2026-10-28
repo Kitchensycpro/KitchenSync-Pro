@@ -739,10 +739,12 @@ function assignCooksGroup(selectIds) {
         const stationKey = id.replace('sel-', '');
         const empId = selectEl.value;
         const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+        
         if (emp) {
             emp.station = stationKey;
             ApiService.request('saveEmployee', { employee: emp });
-            // If the logged-in user is the one being assigned, update their active session state
+            
+            // If the currently logged-in user is a cook and matches this assignment, update their live session state immediately
             if (Store.user && String(Store.user.id).trim() === String(emp.id).trim()) {
                 Store.assignedChecklistKey = stationKey;
                 Store.assignedStation = stationKey.replace(/_/g, ' ').toUpperCase();
@@ -750,8 +752,16 @@ function assignCooksGroup(selectIds) {
             assignedCount++;
         }
     });
-    if (assignedCount > 0) alert(`✅ Successfully assigned ${assignedCount} cook(s) with active checklists!`);
-    else alert("Please select at least one cook.");
+    
+    if (assignedCount > 0) {
+        alert(`✅ Successfully assigned ${assignedCount} cook(s) with active checklists!`);
+        // Refresh views if a manager dashboard is open
+        if (typeof renderManagerAssignmentWidget === 'function') {
+            renderManagerAssignmentWidget();
+        }
+    } else {
+        alert("Please select at least one cook.");
+    }
 }
 
 function submitManagerShiftChecklist() {
