@@ -1206,7 +1206,15 @@ function renderGMDashboard() {
     const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
 
     container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem;"><h3 style="color: #1e3a8a; margin-top: 0;">📈 General Manager Executive Suite & Bonus Program</h3><p style="font-size: 0.85rem; color: #64748b;">14-Day compliance tracking cycle.</p></div>
+        <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="color: #1e3a8a; margin-top: 0;">📈 General Manager Executive Suite & Bonus Program</h3>
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0;">14-Day compliance tracking cycle.</p>
+            </div>
+            <div>
+                <button class="btn btn-secondary" style="color: #dc2626; border: 1px solid #dc2626;" onclick="executeMasterReset()">⚠️ Master Reset All Data</button>
+            </div>
+        </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Active Team Members</span><h2 style="color: #1e3a8a; margin: 5px 0 0 0;">${Store.employees.length}</h2></div>
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Total Shifts Logged (Cycle)</span><h2 style="color: #1e3a8a; margin: 5px 0 0 0;">${cycleShifts.length}</h2></div>
@@ -1264,6 +1272,24 @@ function renderGMDashboard() {
     renderManagerAssignmentWidget();
 }
 
+function executeMasterReset() {
+    if (Store.role !== 'gm') return;
+    if (confirm("⚠️ WARNING: This will clear all local application data, shifts, messages, and reset system records. Are you sure you want to proceed?")) {
+        Store.employees = [];
+        Store.shifts = [];
+        Store.certifications = [];
+        Store.messages = [];
+        Store.recipes = [];
+        ApiService.request('masterReset', {}).then(() => {
+            alert("Master reset completed successfully.");
+            UIController.refreshActiveView();
+        }).catch(() => {
+            alert("Master reset executed locally.");
+            UIController.refreshActiveView();
+        });
+    }
+}
+
 function gmSignOffCert(empId, modId) {
     const cert = Store.certifications.find(c => String(c.empId || c.EMPID).trim() === String(empId).trim() && String(c.modId || c.MODID).trim() === String(modId).trim());
     if (!cert) return;
@@ -1273,13 +1299,42 @@ function gmSignOffCert(empId, modId) {
 
 // Staff Roster View with Add/Edit/Delete & Strict De-Duplication Safeguards
 function renderRosterView() {
+    const rosterViewEl = document.getElementById('view-roster');
+    if (!rosterViewEl) return;
+
+    // Ensure the card contains the Add Employee button header if not already present
+    const isGM = Store.role === 'gm';
+    rosterViewEl.innerHTML = `
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                <h3 style="color: var(--primary); margin: 0;">👥 Staff Roster & Onboarding Directory</h3>
+                ${isGM ? `<button class="btn btn-primary" onclick="openEmployeeModal()">Add Employee ➕</button>` : ''}
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Assigned Station</th>
+                        <th>Hourly Rate</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="roster-table-body">
+                    <!-- Dynamically populated -->
+                </tbody>
+            </table>
+        </div>
+    `;
+
     const tbody = document.getElementById('roster-table-body');
     if (!tbody) return;
     const uniqueEmployees = Array.from(new Map(Store.employees.map(emp => [String(emp.id || emp.ID).trim(), emp])).values());
     tbody.innerHTML = uniqueEmployees.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">No employees found.</td></tr>` :
         uniqueEmployees.map(emp => {
             const eId = emp.id || emp.ID;
-            return `<tr><td>${eId}</td><td><strong>${emp.name || emp.Name}</strong></td><td>${String(emp.role || emp.Role || 'cook').toUpperCase()}</td><td>${emp.station || emp.Station || 'General'}</td><td>$${emp.hourlyRate || emp.HourlyRate || '0.00'}</td><td>${Store.role === 'gm' ? `<div style="display: flex; gap: 6px;"><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEmployeeModal('${eId}')">Edit ✏️</button><button class="btn btn-secondary" style="color: #dc2626; padding: 4px 8px; font-size: 0.8rem;" onclick="deleteEmployee('${eId}')">Delete 🗑️</button></div>` : ''}</td></tr>`;
+            return `<tr><td>${eId}</td><td><strong>${emp.name || emp.Name}</strong></td><td>${String(emp.role || emp.Role || 'cook').toUpperCase()}</td><td>${emp.station || emp.Station || 'General'}</td><td>$${emp.hourlyRate || emp.HourlyRate || '0.00'}</td><td>${isGM ? `<div style="display: flex; gap: 6px;"><button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.8rem;" onclick="openEmployeeModal('${eId}')">Edit ✏️</button><button class="btn btn-secondary" style="color: #dc2626; padding: 4px 8px; font-size: 0.8rem;" onclick="deleteEmployee('${eId}')">Delete 🗑️</button></div>` : ''}</td></tr>`;
         }).join('');
 }
 
