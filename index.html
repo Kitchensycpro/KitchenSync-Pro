@@ -216,6 +216,24 @@
             border-radius: 8px;
             margin-bottom: 1.25rem;
         }
+        @media print {
+    body * {
+        visibility: hidden;
+    }
+    #checklist-container, #checklist-container *, 
+    #bonus-accounting-card, #bonus-accounting-card * {
+        visibility: visible;
+    }
+    #checklist-container, #bonus-accounting-card {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .btn, nav, header, footer {
+        display: none !important;
+    }
+}
     </style>
 </head>
 <body>
