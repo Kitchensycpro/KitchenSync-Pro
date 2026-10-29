@@ -188,10 +188,10 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Range Open Checklist",
                 tasks: [
-                    { id: 'ro1', title: "Verify gas line connections and pilot lights on all range burners.", desc: "Check all burner ports for clogs or uneven flames." },
-                    { id: 'ro2', title: "Check and calibrate all top-stove thermostat controls.", desc: "Verify ice-water bath reads 32°F (0°C)." },
-                    { id: 'ro3', title: "Sanitize prep surfaces and stock Sani-buckets (200-400 ppm quat).", desc: "Ensure wells are clean and filled to operational fill line." },
-                    { id: 'ro4', title: "Verify holding drawer temperatures (140°F or higher).", desc: "Check expiration labels and FIFO rotation standards." }
+                    { id: 'ro1', title: "Turn on all equipment", desc: "Turn on all equipment including both ovens, the waffle iron(s), meat grill, pancake grill, fryolators (set to 350), and the exhaust system[cite: 4]." },
+                    { id: 'ro2', title: "Check Traulsen stock", desc: "Check Traulsen for stock on omelette fills, cheese, apples, waffle batter, and German batter[cite: 4]." },
+                    { id: 'ro3', title: "Season pans and grill", desc: "Season all pans as needed. Season meat grill and place all utensils out for the range/egg station[cite: 4]." },
+                    { id: 'ro4', title: "Check bread stock & prep", desc: "Check all bread stock in the egg station. Perform minor line prep as needed (i.e. diced veggies, meat, apples, wrap cheese)[cite: 4]." }
                 ]
             }
         ],
@@ -199,10 +199,11 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Mid Open Checklist",
                 tasks: [
-                    { id: 'mo1', title: "Inspect intermediate prep cooler temperatures (34°F - 38°F).", desc: "Preheat to 350°F and test press mechanism." },
-                    { id: 'mo2', title: "Restock squeeze bottles, portion cups, and smallwares.", desc: "Ensure all cheese, sliced meats, and spreads are full and dated." },
-                    { id: 'mo3', title: "Check backup inventory in walk-in cooler for afternoon rush.", desc: "Estimate volume for the shift and stage accordingly." },
-                    { id: 'mo4', title: "Ensure handwash sinks are fully stocked with soap and paper towels.", desc: "Ensure all food contact surfaces meet health code standards." }
+                    { id: 'mo1', title: "Set up cold table", desc: "Set up the cold table ensuring all meats, batters, veggies, and cheeses are stocked[cite: 4]." },
+                    { id: 'mo2', title: "Restock bread (grille side)", desc: "Re-stock all bread on grille side (English muffins, French toast, and muffins)[cite: 4]." },
+                    { id: 'mo3', title: "Fill and heat steam table", desc: "Fill the steam table half-way with water, plug it in to turn it on, and set it with 12 hot hold plastic pans[cite: 4]." },
+                    { id: 'mo4', title: "Bring steam table items to temp", desc: "Bring all items for service in the steam table to a minimum internal temperature of 131 degrees Fahrenheit (Note: Hot hold only, NOT FOR HEATING!)[cite: 4]." },
+                    { id: 'mo5', title: "Set utensils and check thaw pull", desc: "Place all correct utensils in the cold table and steam table ready for service. *** Important *** Check thaw pull when arriving for your shift![cite: 4]." }
                 ]
             }
         ],
@@ -210,32 +211,33 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Grill/Fry Open Checklist",
                 tasks: [
-                    { id: 'gfo1', title: "Verify grease traps and fry vats are clean and filled with fresh oil.", desc: "Top off oil if necessary and verify temperature controller at 350°F." },
-                    { id: 'gfo2', title: "Test flattop grill surface heating zones evenly.", desc: "Scrape grill surface clean and apply high-temp cooking oil." },
-                    { id: 'gfo3', title: "Check fry basket hangers and filtering equipment functionality.", desc: "Ensure back-up inventory is staged within arm's reach." },
-                    { id: 'gfo4', title: "Log initial morning oil temperature and quality checks.", desc: "Stage fresh breading, wet batters, and sanitizing buckets." }
+                    { id: 'gfo1', title: "Setup grill meat stock", desc: "Set up the grill with ready-to-fire sausage and bacon, set up backup bacon and sausage, and cook sausage if necessary based on expected volume[cite: 4]." },
+                    { id: 'gfo2', title: "Setup batter bucket and pancake station", desc: "Place the batter bucket out with a 6th pan spacer and 1/4 full of ice by the grill-side bread station. Place the pancake batter bucket inside with a large pancake ladle and cover on top[cite: 4]." },
+                    { id: 'gfo3', title: "Check low-boy freezer and batter system", desc: "Check the fryolator side low-boy freezer for necessary re-stock. Set-up the three bay batter system for chicken tenders and the wet batter bucket for haddock[cite: 4]." },
+                    { id: 'gfo4', title: "Check fryolator oil quality", desc: "Check the fryolator oil for quality. If it is black or smoking, it must be changed prior to your shift start![cite: 4]." },
+                    { id: 'gfo5', title: "Check upper bread shelf", desc: "Check the upper bread shelf for burger buns, hot dog buns, sub rolls, and tortillas. Restock if necessary[cite: 4]." }
                 ]
             }
         ],
         'range_mid_split_open': [
             {
-                phase: "🌅 Range/Mid-Split Open Checklist",
+                phase: "🌅 Range/Mid-Split Open Checklist (Combined)",
                 tasks: [
-                    { id: 'rmso1', title: "Complete safety walk for range and split-station gas lines.", desc: "Verify safe heating temperatures across range and soup wells." },
-                    { id: 'rmso2', title: "Verify cross-station inventory par levels for sauces and proteins.", desc: "Ensure sliced proteins, cheeses, and spreads are fully stocked and dated." },
-                    { id: 'rmso3', title: "Test emergency shut-off valves and hood suppression pins.", desc: "Equally divide shared mid-station prep tasks with partner." },
-                    { id: 'rmso4', title: "Review prep allocation sheet with shift manager.", desc: "Review prep allocation sheet with shift manager." }
+                    { id: 'rmso1', title: "Range Startup", desc: "Turn on ovens, waffle iron, meat grill, pancake grill, fryolators (350°F), and exhaust[cite: 4]." },
+                    { id: 'rmso2', title: "Mid Cold Table & Steam Table Setup", desc: "Set up cold table stock, fill steam table to halfway, and set with 12 hot hold pans[cite: 4]." },
+                    { id: 'rmso3', title: "Stock Bread & Check Thaw Pull", desc: "Re-stock all grille-side bread and check thaw pull upon arrival[cite: 4]." },
+                    { id: 'rmso4', title: "Shared Line Prep", desc: "Coordinate minor line prep and utensil placement between Range and Mid stations[cite: 4]." }
                 ]
             }
         ],
         'grill_fry_mid_split_open': [
             {
-                phase: "🌅 Grill/Fry/Mid-Split Open Checklist",
+                phase: "🌅 Grill/Fry/Mid-Split Open Checklist (Combined)",
                 tasks: [
-                    { id: 'gfmaso1', title: "Full system startup across fryer batteries, grills, and mid-split.", desc: "Preheat grill to 350°F and prepare basket stations." },
-                    { id: 'gfmaso2', title: "Calibrate all probe thermometers in ice water and boiling water.", desc: "Support mid-station bread rotation alongside grill startup." },
-                    { id: 'gfmaso3', title: "Verify all HACCP temperature logs are initialized for the shift.", desc: "Equally divide shared condiment stocking responsibilities." },
-                    { id: 'gfmaso4', title: "Inspect personal protective equipment (heat gloves, aprons).", desc: "Inspect personal protective equipment (heat gloves, aprons)." }
+                    { id: 'gfmaso1', title: "Grill & Fryer Readiness", desc: "Set up ready-to-fire sausage/bacon, check fryolator oil quality (change if black/smoking), and set up batter systems[cite: 4]." },
+                    { id: 'gfmaso2', title: "Mid Station Table & Steam Table", desc: "Stock cold table, fill steam table with water/pans, and verify minimum holding temp of 131°F[cite: 4]." },
+                    { id: 'gfmaso3', title: "Bread & Freezers Re-stock", desc: "Check upper bread shelf, lower-boy freezer, and grille-side bread stock[cite: 4]." },
+                    { id: 'gfmaso4', title: "Thaw Pull Verification", desc: "Verify thaw pull items and stage batter buckets with ice[cite: 4]." }
                 ]
             }
         ],
@@ -243,10 +245,17 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌙 Range/Mid-Split Close Checklist",
                 tasks: [
-                    { id: 'rcl1', title: "Power down range burners and shut main gas valve securely.", desc: "One hour prior to close, break down veg. and poach pans and bring to dish." },
-                    { id: 'rcl2', title: "Degrease burner grates, drip trays, and mid-split stainless steel.", desc: "Brush down range tops and clean under burners." },
-                    { id: 'rcl3', title: "Transfer remaining perishable items to walk-in cooler with date labels.", desc: "Clean traps for range and small grill. Shut down one oven." },
-                    { id: 'rcl4', title: "Sweep and mop kitchen floors using approved sanitizer solution.", desc: "Clean all stainless in egg station, including oven doors, traulsens, and table." }
+                    { id: 'rcl1', title: "Range: Veggies & Poach Pans", desc: "One hour prior to close, break down veg. and poach pans and bring to dish[cite: 1]." },
+                    { id: 'rcl2', title: "Range: Tops & Burners", desc: "Brush down range tops and clean under burners[cite: 1]." },
+                    { id: 'rcl3', title: "Range: Traps & Oven", desc: "Clean traps for range and small grill. Shut down one oven[cite: 1]." },
+                    { id: 'rcl4', title: "Range: Stainless Steel & Traulsen", desc: "Clean all stainless in egg station, including oven doors, traulsens, and table. Clean interior of traulsen including wire racks[cite: 1]." },
+                    { id: 'rcl5', title: "Range: Foil & Bread", desc: "Change foil in oven, wipe/scuff interior doors, change foil liners on top shelves, and restock bread rotating product[cite: 1]." },
+                    { id: 'rcl6', title: "Range: Fish & Thaw Pull", desc: "Drain and ice fish in the walk-in. Check thaw pull including all meats, fish, and other frozen product[cite: 1]." },
+                    { id: 'mcl1', title: "Mid: Sandwich Unit Utensils", desc: "One hour prior to close, remove all utensils from the sandwich unit[cite: 2]." },
+                    { id: 'mcl2', title: "Mid: Interior & Back Cleaning", desc: "Clean interior top/bottom of unit, pull out unit and clean back and floor behind it[cite: 2]." },
+                    { id: 'mcl3', title: "Mid: Pans & Stocking Rules", desc: "Flip all pans and restock properly (DO NOT double stock; one full pan of every item). Clean lid inside and out[cite: 2]." },
+                    { id: 'mcl4', title: "Mid: Microwave & Containers", desc: "Clean microwave inside and out (including shelf), restock plates and to-go containers[cite: 2]." },
+                    { id: 'rcl7', title: "Shared: Floors & Manager Sign-off", desc: "Assist other cooks to thoroughly sweep, deck brush, and mop the line floor. Check with a manager prior to clocking out[cite: 1, 2]!" }
                 ]
             }
         ],
@@ -254,10 +263,12 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌙 Grill/Fry/Mid-Split Close Checklist",
                 tasks: [
-                    { id: 'gcl1', title: "Perform boil-out procedure on fryers and filter cooking oil.", desc: "One hour prior to close, flip pancake batter to a 6th pan with a ladle." },
-                    { id: 'gcl2', title: "Scrape, polish, and oil flattop grill surfaces.", desc: "Bring the batter gun to dish." },
-                    { id: 'gcl3', title: "Empty and sanitize grease collection bins and waste containers.", desc: "Wipe and scrub lower shelf of the grill and clean temperature dials." },
-                    { id: 'gcl4', title: "Lock down back doors, verify equipment power-downs, and set alarm.", desc: "Strain the fryers of excess crumbs and food particles." }
+                    { id: 'gcl1', title: "Grill/Fry: Batter & Lower Shelf", desc: "One hour prior to close, flip pancake batter to a 6th pan with ladle, bring batter gun to dish. Wipe and scrub lower shelf of grill and clean dials[cite: 3]." },
+                    { id: 'gcl2', title: "Grill/Fry: Fryers & Flour", desc: "Strain fryers of excess crumbs, wipe stainless dividers/front, close down one fryolator, and sift fry flour into new pan[cite: 3]." },
+                    { id: 'gcl3', title: "Grill/Fry: Steam Tables", desc: "Clean sink by steam tables, break down/clean steam tables, place product into 10 plastic cambros on cart, wrap sausage/bacon with foil/labels[cite: 3]." },
+                    { id: 'gcl4', title: "Grill/Fry: Grill Traps & Grease", desc: "Note oil changes on dry erase board. Clean grill, rails, wall, grease trap into metal German pan, brush charbroiler, and run grease to outside trap (DO NOT leave inside overnight!)[cite: 3]." },
+                    { id: 'mcl5', title: "Mid: Sandwich Unit Closing", desc: "Remove utensils, clean interior top/bottom, pull out unit to clean floor, flip/rotate pans (one full pan max), and ensure sandwich items are covered[cite: 2]." },
+                    { id: 'gcl5', title: "Shared: Freezer, Thaw Pull & Manager Sign-off", desc: "Restock freezer (fries, chicken, etc.), assist with thaw pull and floors, and check with manager prior to leaving[cite: 2, 3]!" }
                 ]
             }
         ]
@@ -267,10 +278,10 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Lista de Apertura de Cocina (Range)",
                 tasks: [
-                    { id: 'ro1', title: "Verifique las conexiones de gas y las luces piloto en todos los quemadores.", desc: "Check all burner ports for clogs or uneven flames." },
-                    { id: 'ro2', title: "Verifique y calibre todos los controles de termostato de la estufa.", desc: "Verify ice-water bath reads 32°F (0°C)." },
-                    { id: 'ro3', title: "Desinfecte las superficies y prepare los cubos sanitizantes (200-400 ppm).", desc: "Ensure wells are clean and filled to operational fill line." },
-                    { id: 'ro4', title: "Verifique las temperaturas de los cajones térmicos (140°F o más).", desc: "Check expiration labels and FIFO rotation standards." }
+                    { id: 'ro1', title: "Encender todo el equipo", desc: "Encender todo el equipo incluyendo ambos hornos, plancha(s) de waffles, parrilla de carne, parrilla de panqueques, freidoras (a 350) y sistema de escape[cite: 4]." },
+                    { id: 'ro2', title: "Verificar stock en Traulsen", desc: "Revisar stock en Traulsen de relleno de tortilla, queso, manzanas, mezcla de waffles y mezcla alemana[cite: 4]." },
+                    { id: 'ro3', title: "Sazonar sartenes y parrilla", desc: "Sazonar sartenes según sea necesario. Sazonar parrilla de carne y colocar utensilios para la estación de huevos[cite: 4]." },
+                    { id: 'ro4', title: "Verificar stock de pan y preparación menor", desc: "Revisar stock de pan en estación de huevos. Preparación menor según necesidad (verduras picadas, carne, queso)[cite: 4]." }
                 ]
             }
         ],
@@ -278,10 +289,11 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Lista de Apertura Intermedia (Mid)",
                 tasks: [
-                    { id: 'mo1', title: "Inspeccione las temperaturas del refrigerador intermedio (34°F - 38°F).", desc: "Preheat to 350°F and test press mechanism." },
-                    { id: 'mo2', title: "Reabastezca botellas exprimibles, tazas de porción y utensilios pequeños.", desc: "Ensure all cheese, sliced meats, and spreads are full and dated." },
-                    { id: 'mo3', title: "Verifique el inventario de respaldo en el refrigerador grande para la tarde.", desc: "Estimate volume for the shift and stage accordingly." },
-                    { id: 'mo4', title: "Asegúrese de que los lavabos tengan jabón y toallas de papel.", desc: "Ensure all food contact surfaces meet health code standards." }
+                    { id: 'mo1', title: "Configurar mesa fría", desc: "Configurar la mesa fría asegurando que carnes, mezclas, verduras y quesos estén surtidos[cite: 4]." },
+                    { id: 'mo2', title: "Reabastecer pan", desc: "Reabastecer todo el pan del lado de la parrilla (muffins ingleses, pan francés y muffins)[cite: 4]." },
+                    { id: 'mo3', title: "Llenar y encender mesa de vapor", desc: "Llenar la mesa de vapor hasta la mitad con agua, enchufarla y colocar 12 bandejas de plástico[cite: 4]." },
+                    { id: 'mo4', title: "Temperatura de mesa de vapor", desc: "Llevar los artículos de servicio a una temperatura interna mínima de 131°F (¡Es para mantención caliente, NO para calentar!)[cite: 4]." },
+                    { id: 'mo5', title: "Utensilios y extracción de congelados", desc: "Colocar utensilios correctos en mesa fría y de vapor. *** ¡Importante! *** ¡Revisar la extracción de congelados al llegar![cite: 4]." }
                 ]
             }
         ],
@@ -289,60 +301,68 @@ const CHECKLIST_SPECS = {
             {
                 phase: "🌅 Lista de Apertura de Plancha y Freidora",
                 tasks: [
-                    { id: 'gfo1', title: "Verifique que las trampas de grasa y freidoras estén limpias y con aceite fresco.", desc: "Top off oil if necessary and verify temperature controller at 350°F." },
-                    { id: 'gfo2', title: "Pruebe las zonas de calentamiento de la superficie de la plancha de manera uniforme.", desc: "Scrape grill surface clean and apply high-temp cooking oil." },
-                    { id: 'gfo3', title: "Verifique el funcionamiento de los ganchos de las canastas y equipos de filtrado.", desc: "Ensure back-up inventory is staged within arm's reach." },
-                    { id: 'gfo4', title: "Registre las comprobaciones iniciales de temperatura y calidad del aceite.", desc: "Stage fresh breading, wet batters, and sanitizing buckets." }
+                    { id: 'gfo1', title: "Configurar carne en parrilla", desc: "Configurar salchichas y tocino listos para cocinar, preparar respaldo y cocinar si es necesario según volumen[cite: 4]." },
+                    { id: 'gfo2', title: "Colocar cubo de mezcla y panqueques", desc: "Colocar balde de mezcla con espaciador de 6to pan y 1/4 de hielo cerca de la estación de pan. Poner balde de panqueques con cucharón grande[cite: 4]." },
+                    { id: 'gfo3', title: "Revisar congelador bajo y sistema de rebozado", desc: "Revisar el congelador inferior de freidoras para reabastecimiento. Configurar sistema de 3 compartimentos para pollo y balde húmedo para eglefino[cite: 4]." },
+                    { id: 'gfo4', title: "Verificar calidad del aceite", desc: "Revisar la calidad del aceite de freidoras. Si está negro o humea, ¡debe cambiarse antes de iniciar el turno![cite: 4]." },
+                    { id: 'gfo5', title: "Revisar estante superior de pan", desc: "Revisar estante superior de pan para hamburguesas, hot dogs, subs y tortillas. Reabastecer si es necesario[cite: 4]." }
                 ]
             }
         ],
         'range_mid_split_open': [
             {
-                phase: "🌅 Lista de Apertura Dividida Range/Mid",
+                phase: "🌅 Apertura Dividida Range/Mid",
                 tasks: [
-                    { id: 'rmso1', title: "Complete la caminata de seguridad para las líneas de gas de range y mid.", desc: "Verify safe heating temperatures across range and soup wells." },
-                    { id: 'rmso2', title: "Verifique los niveles de inventario cruzado para salsas y proteínas.", desc: "Ensure sliced proteins, cheeses, and spreads are fully stocked and dated." },
-                    { id: 'rmso3', title: "Pruebe las válvulas de cierre de emergencia y los pines de supresión de campana.", desc: "Equally divide shared mid-station prep tasks with partner." },
-                    { id: 'rmso4', title: "Revise la hoja de asignación de preparación con el gerente de turno.", desc: "Review prep allocation sheet with shift manager." }
+                    { id: 'rmso1', title: "Inicio de Range", desc: "Encender hornos, planchas, parrillas de carne/panqueques, freidoras (350) y sistema de escape[cite: 4]." },
+                    { id: 'rmso2', title: "Configuración Mid", desc: "Configurar mesa fría y mesa de vapor con agua y 12 bandejas[cite: 4]." },
+                    { id: 'rmso3', title: "Pan y Extracción", desc: "Reabastecer pan y revisar extracción de congelados al llegar[cite: 4]." },
+                    { id: 'rmso4', title: "Preparación compartida", desc: "Dividir tareas de preparación menor y ubicación de utensilios[cite: 4]." }
                 ]
             }
         ],
         'grill_fry_mid_split_open': [
             {
-                phase: "🌅 Lista de Apertura Completa Grill/Fry/Mid-Split",
+                phase: "🌅 Apertura Completa Grill/Fry/Mid-Split",
                 tasks: [
-                    { id: 'gfmaso1', title: "Inicio completo del sistema en baterías de freidoras, planchas y mid-split.", desc: "Preheat grill to 350°F and prepare basket stations." },
-                    { id: 'gfmaso2', title: "Calibre todos los termómetros de sonda en agua con hielo y agua hirviendo.", desc: "Support mid-station bread rotation alongside grill startup." },
-                    { id: 'gfmaso3', title: "Verifique que todos los registros de temperatura HACCP estén iniciados.", desc: "Equally divide shared condiment stocking responsibilities." },
-                    { id: 'gfmaso4', title: "Inspeccione el equipo de protección personal (guantes térmicos, delantales).", desc: "Inspect personal protective equipment (heat gloves, aprons)." }
+                    { id: 'gfmaso1', title: "Preparación de Grill y Freidoras", desc: "Configurar salchichas/tocino, revisar calidad del aceite de freidoras (cambiar si es necesario) y preparar sistemas de rebozado[cite: 4]." },
+                    { id: 'gfmaso2', title: "Mesa Fría y de Vapor", desc: "Surtir mesa fría, llenar mesa de vapor con agua y verificar temperatura mínima de 131°F[cite: 4]." },
+                    { id: 'gfmaso3', title: "Panes y Congelador", desc: "Revisar estante de pan, congeladores inferiores y stock de pan[cite: 4]." },
+                    { id: 'gfmaso4', title: "Verificación de Turno", desc: "Revisar extracción de congelados y preparar baldes de mezcla con hielo[cite: 4]." }
                 ]
             }
         ],
         'range_mid_split_close': [
             {
-                phase: "🌙 Lista de Cierre Dividida Range/Mid",
+                phase: "🌙 Cierre Dividido Range/Mid",
                 tasks: [
-                    { id: 'rcl1', title: "Apague los quemadores y cierre la válvula principal de gas de forma segura.", desc: "One hour prior to close, break down veg. and poach pans and bring to dish." },
-                    { id: 'rcl2', title: "Desengrase las rejillas de los quemadores, bandejas y acero inoxidable.", desc: "Brush down range tops and clean under burners." },
-                    { id: 'rcl3', title: "Transfiera los perecederos restantes al refrigerador con etiquetas de fecha.", desc: "Clean traps for range and small grill. Shut down one oven." },
-                    { id: 'rcl4', title: "Barra y trapee los pisos de la cocina usando solución desinfectante aprobada.", desc: "Clean all stainless in egg station, including oven doors, traulsens, and table." }
+                    { id: 'rcl1', title: "Range: Verduras y Ollas", desc: "Una hora antes del cierre, desmontar verduras y ollas y llevar a platos[cite: 1]." },
+                    { id: 'rcl2', title: "Range: Superficies", desc: "Cepillar parte superior de hornallas y limpiar debajo de quemadores[cite: 1]." },
+                    { id: 'rcl3', title: "Range: Trampas y Horno", desc: "Limpiar trampas de hornallas y parrilla pequeña. Apagar un horno[cite: 1]." },
+                    { id: 'rcl4', title: "Range: Acero y Traulsen", desc: "Limpiar acero inoxidable de estación de huevos y traulsen (incluyendo rejillas)[cite: 1]." },
+                    { id: 'rcl5', title: "Range: Aluminio y Pan", desc: "Cambiar aluminio en horno, revestimientos superiores, y reabastecer pan rotando producto[cite: 1]." },
+                    { id: 'rcl6', title: "Range: Pescado y Extracción", desc: "Drenar y poner hielo en pescado. Revisar extracción de congelados[cite: 1]." },
+                    { id: 'mcl1', title: "Mid: Utensilios y Unidad", desc: "Retirar utensilios de unidad de sándwiches, limpiar interior superior/inferior, sacar unidad y limpiar piso trasero[cite: 2]." },
+                    { id: 'mcl2', title: "Mid: Rotación y Tapa", desc: "Voltear bandejas y reabastecer adecuadamente (una bandeja llena por artículo). Limpiar tapa por dentro y fuera[cite: 2]." },
+                    { id: 'mcl3', title: "Mid: Microondas y Contenedores", desc: "Limpiar microondas y reabastecer platos y recipientes[cite: 2]." },
+                    { id: 'rcl7', title: "Compartido: Pisos y Gerente", desc: "Barrer, cepillar y trapear el piso de la línea. ¡Consultar con el gerente antes de salir![cite: 1, 2]" }
                 ]
             }
         ],
         'grill_fry_mid_split_close': [
             {
-                phase: "🌙 Lista de Cierre Completa Grill/Fry/Mid-Split",
+                phase: "🌙 Cierre Completo Grill/Fry/Mid-Split",
                 tasks: [
-                    { id: 'gcl1', title: "Realice el procedimiento de hervor en las freidoras y filtre el aceite.", desc: "One hour prior to close, flip pancake batter to a 6th pan with a ladle." },
-                    { id: 'gcl2', title: "Raspe, pula y engrase las superficies de la plancha plana.", desc: "Bring the batter gun to dish." },
-                    { id: 'gcl3', title: "Vacíe y desinfecte los contenedores de recolección de grasa y residuos.", desc: "Wipe and scrub lower shelf of the grill and clean temperature dials." },
-                    { id: 'gcl4', title: "Asegure las puertas traseras, verifique apagados y active la alarma.", desc: "Strain the fryers of excess crumbs and food particles." }
+                    { id: 'gcl1', title: "Grill/Fry: Mezcla y Estante", desc: "Pasar mezcla de panqueques a recipiente de 6 con cucharón, llevar pistola a lavado. Fregar estante inferior y diales[cite: 3]." },
+                    { id: 'gcl2', title: "Grill/Fry: Freidoras y Harina", desc: "Colar migajas de freidoras, limpiar divisores/frente, cerrar una freidora y tamizar harina[cite: 3]." },
+                    { id: 'gcl3', title: "Grill/Fry: Mesas de Vapor", desc: "Limpiar fregadero de mesas de vapor, limpiar mesas, colocar producto en 10 cambros y envolver salchicha/tocino en papel aluminio[cite: 3]." },
+                    { id: 'gcl4', title: "Grill/Fry: Grasa y Parrilla", desc: "Anotar aceite en pizarra, limpiar parrilla/rieles/pared, limpiar trampa de grasa a bandeja alemana, cepillar asador y llevar grasa al exterior (¡No dejar dentro de noche!)[cite: 3]." },
+                    { id: 'mcl4', title: "Mid: Unidad de Sándwiches", desc: "Retirar utensilios, limpiar interior superior/inferior, sacar unidad para limpiar piso, rotar bandejas y cubrir artículos al final[cite: 2]." },
+                    { id: 'gcl5', title: "Compartido: Congelador, Extracción y Salida", desc: "Reabastecer congelador, ayudar con extracción de congelados y pisos, ¡y consultar con el gerente antes de salir![cite: 2, 3]" }
                 ]
             }
         ]
     }
 };
-
 // ==========================================
 // 3. SERVSAFE COMPLIANT TRAINING MODULES
 // ==========================================
