@@ -624,7 +624,11 @@ function renderCookChecklistGated() {
         container.innerHTML += `<div class="card checklist-section">${html}</div>`;
     });
 
-    container.innerHTML += `<div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"><button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button></div>`;
+   container.innerHTML += `
+        <div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button>
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
+        </div>`;
 }
 
 function updateGreetingLabel() {
@@ -1236,7 +1240,27 @@ function renderGMDashboard() {
                     <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #b45309;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Bronze Tier (85%+):</span> <span>${bronzeCount} Employee(s)</span></div></div>
                 </div>
             </div>
-            <div class="card"><h4 style="color: #1e3a8a; margin-top: 0;">📑 Bonus Program Accounting Sheet</h4>
+           <div class="card" id="bonus-accounting-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                    <h4 style="color: #1e3a8a; margin: 0;">📑 Bonus Program Accounting Sheet</h4>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem;" onclick="window.print()">🖨️ Print Payout Report</button>
+                </div>
+                <div style="max-height: 240px; overflow-y: auto;">
+                    <table class="data-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Shifts</th>
+                                <th>Avg Score</th>
+                                <th>Tier</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${accountingRows.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No employees have met thresholds.</td></tr>` : accountingRows.join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
                 <div style="max-height: 240px; overflow-y: auto; margin-top: 1rem;"><table class="data-table" style="width: 100%;"><thead><tr><th>Employee</th><th>Shifts</th><th>Avg Score</th><th>Tier</th></tr></thead><tbody>${accountingRows.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No employees have met thresholds.</td></tr>` : accountingRows.join('')}</tbody></table></div>
             </div>
         </div>
