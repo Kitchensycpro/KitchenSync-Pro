@@ -173,7 +173,7 @@ function t(key) {
 // 2. DATA SPECS: ALL 7 CHECKLISTS (BILINGUAL)
 // ==========================================
 const CHECKLIST_SPECS = {
-    rangeOpen: {
+    range_open: {
         title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa" },
         items: {
             en: [
@@ -212,7 +212,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    midOpen: {
+    mid_open: {
         title: { en: "Mid Open Checklist", es: "Lista de Apertura de Media Línea" },
         items: {
             en: [
@@ -251,7 +251,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grillFryOpen: {
+    grill_fry_open: {
         title: { en: "Grill/Fry Open Checklist", es: "Lista de Apertura de Parrilla y Freidora" },
         items: {
             en: [
@@ -290,7 +290,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    rangeMidSplitOpen: {
+    range_mid_split_open: {
         title: { en: "Range/Mid-Split Open Checklist", es: "Lista de Apertura de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -329,7 +329,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grillFryMidSplitOpen: {
+    grill_fry_mid_split_open: {
         title: { en: "Grill/Fry/Mid-Split Open Checklist", es: "Lista de Apertura Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -368,7 +368,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    rangeMidSplitClose: {
+    range_mid_split_close: {
         title: { en: "Range/Mid-Split Close Checklist", es: "Lista de Cierre de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -407,7 +407,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grillFryMidSplitClose: {
+    grill_fry_mid_split_close: {
         title: { en: "Grill/Fry/Mid-Split Close Checklist", es: "Lista de Cierre Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
