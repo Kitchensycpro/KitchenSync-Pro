@@ -179,21 +179,21 @@ const CHECKLIST_SPECS = {
         title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa" },
         items: {
             en: [
-                "Turn on all equipment including both ovens, the waffle iron(s), meat grill, pancake grill, fryolators (set to 350), and the exhaust system.",[cite: 1]
-                "Check Traulsen for stock on omelette fills, cheese, apples, waffle batter, and German batter.",[cite: 1]
-                "Season all pans as needed.",[cite: 1]
-                "Season meat grill and place all utensils out for the range/egg station.",[cite: 1]
-                "Check all bread stock in the egg station.",[cite: 1]
-                "Perform minor line prep as needed (i.e. diced veggies, meat, apples, wrap cheese).",[cite: 1]
-                "Check and calibrate all oven and grill temps.",[cite: 1]
-                "Set up sanitizing buckets with a quat solution (200-400 ppm) for the egg station.",[cite: 1]
-                "Sanitize all station cutting boards and prep surfaces.",[cite: 1]
-                "Set up a poached water pan and veggie water pan.",[cite: 1]
-                "Verify HACCP temperature logs are initialized for the morning shift.",[cite: 1]
-                "Ensure the handwash sink is clean and stocked.",[cite: 1]
-                "Check thaw pull for all daily line items is completed.",[cite: 1]
-                "End of shift - scrub and clean all stainless, restock Traulsen, egg-side bread and cold table.",[cite: 1]
-                "End of shift - clean range top, ovens, and meat grill."[cite: 1]
+                "Turn on all equipment including both ovens, the waffle iron(s), meat grill, pancake grill, fryolators (set to 350), and the exhaust system.",
+                "Check Traulsen for stock on omelette fills, cheese, apples, waffle batter, and German batter.",
+                "Season all pans as needed.",
+                "Season meat grill and place all utensils out for the range/egg station.",
+                "Check all bread stock in the egg station.",
+                "Perform minor line prep as needed (i.e. diced veggies, meat, apples, wrap cheese).",
+                "Check and calibrate all oven and grill temps.",
+                "Set up sanitizing buckets with a quat solution (200-400 ppm) for the egg station.",
+                "Sanitize all station cutting boards and prep surfaces.",
+                "Set up a poached water pan and veggie water pan.",
+                "Verify HACCP temperature logs are initialized for the morning shift.",
+                "Ensure the handwash sink is clean and stocked.",
+                "Check thaw pull for all daily line items is completed.",
+                "End of shift - scrub and clean all stainless, restock Traulsen, egg-side bread and cold table.",
+                "End of shift - clean range top, ovens, and meat grill."
             ],
             es: [
                 "Encienda todo el equipo, incluidos ambos hornos, wafflera(s), parrilla de carne, parrilla de panqueques, freidoras (ajustadas a 350) y el sistema de extracción.",
@@ -218,21 +218,21 @@ const CHECKLIST_SPECS = {
         title: { en: "Mid Open Checklist", es: "Lista de Apertura de Media Línea" },
         items: {
             en: [
-                "Set up the cold table ensuring all meats, batters, veggies, and cheeses are stocked.",[cite: 1]
-                "Make back-up French toast and crepe batter as needed.",[cite: 1]
-                "Check stock for all bread on the grill side (English muffins, French toast, and muffins).",[cite: 1]
-                "Fill the steam table half-way with water and plug it in to turn it on.",[cite: 1]
-                "Set the steam table with 12 hot hold plastic pans.",[cite: 1]
-                "Bring all items for service in the steam table to a minimum internal temperature of 131 degrees Fahrenheit (Hot hold only, NOT for heating!). Transfer to new pans in the table.",[cite: 1]
-                "Place all correct utensils in the cold table and steam table ready for service.",[cite: 1]
-                "Inspect intermediate prep cooler temperatures to ensure they hold safely between 34°F and 38°F.",[cite: 1]
-                "Check backup inventory in the walk-in cooler to estimate afternoon rush volume.",[cite: 1]
-                "Restock squeeze bottles, portion cups, and smallwares.",[cite: 1]
-                "Stock plates, bowls, and to-go containers near the pass-through window.",[cite: 1]
-                "Verify the sanitation towel bucket is active and clean.",[cite: 1]
-                "Ensure the POS printer is operational with good ink and paper.",[cite: 1]
-                "End of shift - Flip all pans on the cold table. Restock and clean top and inside the cold table.",[cite: 1]
-                "End of shift - Restock all bread on fry side and all items in the steam table as necessary."[cite: 1]
+                "Set up the cold table ensuring all meats, batters, veggies, and cheeses are stocked.",
+                "Make back-up French toast and crepe batter as needed.",
+                "Check stock for all bread on the grill side (English muffins, French toast, and muffins).",
+                "Fill the steam table half-way with water and plug it in to turn it on.",
+                "Set the steam table with 12 hot hold plastic pans.",
+                "Bring all items for service in the steam table to a minimum internal temperature of 131 degrees Fahrenheit (Hot hold only, NOT for heating!). Transfer to new pans in the table.",
+                "Place all correct utensils in the cold table and steam table ready for service.",
+                "Inspect intermediate prep cooler temperatures to ensure they hold safely between 34°F and 38°F.",
+                "Check backup inventory in the walk-in cooler to estimate afternoon rush volume.",
+                "Restock squeeze bottles, portion cups, and smallwares.",
+                "Stock plates, bowls, and to-go containers near the pass-through window.",
+                "Verify the sanitation towel bucket is active and clean.",
+                "Ensure the POS printer is operational with good ink and paper.",
+                "End of shift - Flip all pans on the cold table. Restock and clean top and inside the cold table.",
+                "End of shift - Restock all bread on fry side and all items in the steam table as necessary."
             ],
             es: [
                 "Prepare la mesa fría asegurándose de que todas las carnes, masas, verduras y quesos estén abastecidos.",
@@ -257,21 +257,21 @@ const CHECKLIST_SPECS = {
         title: { en: "Grill/Fry Open Checklist", es: "Lista de Apertura de Parrilla y Freidora" },
         items: {
             en: [
-                "Set up the grill with ready to fire sausage and bacon, set up backup bacon and sausage.",[cite: 1, 2]
-                "Cook sausage if necessary based on expected volume of business.",[cite: 1, 2]
-                "Place a batter bucket out with a 6th pan spacer and 1/4 full of ice by the grill-side bread station.",[cite: 2]
-                "Place the pancake batter bucket inside with a large pancake ladle and cover on top.",[cite: 2]
-                "Check the fryolator side low-boy freezer for necessary re-stock.",[cite: 2]
-                "Set-up the three bay batter system for chicken tenders and the wet batter bucket for haddock.",[cite: 2]
-                "Check the fryolator oil for quality. If it is black or smoking, it must be changed prior to your shift start!.",[cite: 2]
-                "Check the upper bread shelf for burger buns, hot dog buns, sub rolls, and tortillas, and restock if necessary.",[cite: 2]
-                "Inspect oil levels and verify temperature controllers are set to 350°F.",[cite: 2]
-                "Scrape the flat-top griddle surface clean and apply high-temp cooking oil to season heating zones.",[cite: 2]
-                "Check grease traps and ensure clean drip pans are in place.",[cite: 2]
-                "Stock low-boy freezer with french fries, chicken, and mac and cheese within arm's reach.",[cite: 2]
-                "Review expected volume sheets with the morning kitchen lead.",[cite: 2]
-                "End of shift - Check the low boy freezer for re-stock and stock accordingly.",[cite: 2]
-                "End of shift - Clean the grill, including the control panel and shelves, Empty the greasetrap."[cite: 2]
+                "Set up the grill with ready to fire sausage and bacon, set up backup bacon and sausage.",
+                "Cook sausage if necessary based on expected volume of business.",
+                "Place a batter bucket out with a 6th pan spacer and 1/4 full of ice by the grill-side bread station.",
+                "Place the pancake batter bucket inside with a large pancake ladle and cover on top.",
+                "Check the fryolator side low-boy freezer for necessary re-stock.",
+                "Set-up the three bay batter system for chicken tenders and the wet batter bucket for haddock.",
+                "Check the fryolator oil for quality. If it is black or smoking, it must be changed prior to your shift start!.",
+                "Check the upper bread shelf for burger buns, hot dog buns, sub rolls, and tortillas, and restock if necessary.",
+                "Inspect oil levels and verify temperature controllers are set to 350°F.",
+                "Scrape the flat-top griddle surface clean and apply high-temp cooking oil to season heating zones.",
+                "Check grease traps and ensure clean drip pans are in place.",
+                "Stock low-boy freezer with french fries, chicken, and mac and cheese within arm's reach.",
+                "Review expected volume sheets with the morning kitchen lead.",
+                "End of shift - Check the low boy freezer for re-stock and stock accordingly.",
+                "End of shift - Clean the grill, including the control panel and shelves, Empty the greasetrap."
             ],
             es: [
                 "Prepare la parrilla con salchicha y tocino listos para cocinar, y prepare respaldo de tocino y salchicha.",
@@ -296,20 +296,20 @@ const CHECKLIST_SPECS = {
         title: { en: "Range/Mid-Split Open Checklist", es: "Lista de Apertura de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
-                "Turn on all primary range equipment including both ovens, waffle irons, and exhaust systems.",[cite: 2]
-                "Check the POS printer for paper and ink.",[cite: 2]
-                "Check Traulsen inventory for omelette fills, cheese, apples, and batters.",[cite: 2]
-                "Season range pans and meat grill surfaces; layout egg station utensils.",[cite: 2]
-                "Set up the mid cold table ensuring meats, batters, and veggies are fully stocked.",[cite: 2]
-                "Check/re-stock all grille-side breads.",[cite: 2]
-                "Fill the steam table half-way with water, plug in, and place 12 hot hold pans in the table.",[cite: 2]
-                "Heat steam table items to a minimum internal temperature of 131°F.",[cite: 2]
-                "Verify mandatory thaw pull upon arriving for the shift.",[cite: 2]
-                "Ensure handwash sinks are fully stocked with soap and paper towels.",[cite: 2]
-                "Divide secondary mid-station prep tasks equally between split partners.",[cite: 2]
-                "End of shift: clean range top, ovens, meat grill, and all stainless in the egg station.",[cite: 2]
-                "Re-stock Traulsen.",[cite: 2]
-                "Assist line partner with cleaning the floor.",[cite: 2]
+                "Turn on all primary range equipment including both ovens, waffle irons, and exhaust systems.",
+                "Check the POS printer for paper and ink.",
+                "Check Traulsen inventory for omelette fills, cheese, apples, and batters.",
+                "Season range pans and meat grill surfaces; layout egg station utensils.",
+                "Set up the mid cold table ensuring meats, batters, and veggies are fully stocked.",
+                "Check/re-stock all grille-side breads.",
+                "Fill the steam table half-way with water, plug in, and place 12 hot hold pans in the table.",
+                "Heat steam table items to a minimum internal temperature of 131°F.",
+                "Verify mandatory thaw pull upon arriving for the shift.",
+                "Ensure handwash sinks are fully stocked with soap and paper towels.",
+                "Divide secondary mid-station prep tasks equally between split partners.",
+                "End of shift: clean range top, ovens, meat grill, and all stainless in the egg station.",
+                "Re-stock Traulsen.",
+                "Assist line partner with cleaning the floor.",
                 "Check HACCP logs and sign off before departure."
             ],
             es: [
@@ -335,21 +335,21 @@ const CHECKLIST_SPECS = {
         title: { en: "Grill/Fry/Mid-Split Open Checklist", es: "Lista de Apertura Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
-                "Set up the grill with ready-to-fire sausage and bacon; prepare backup supplies and cook if needed.",[cite: 2, 3]
-                "Place the batter bucket out with a 6th pan spacer and 1/4 ice near the bread station.",[cite: 2, 3]
-                "Position pancake batter bucket inside with a large ladle and cover.",[cite: 2, 3]
-                "Check fryolator low-boy freezer for required re-stocks.",[cite: 2, 3]
-                "Set up a three-bay batter system for chicken tenders and wet batter bucket for haddock.",[cite: 3]
-                "Inspect fryolator oil quality; change immediately if black or smoking.",[cite: 3]
-                "Check the upper bread shelf for burger buns, hot dog buns, sub rolls, and tortillas.",[cite: 3]
-                "Check thaw pull requirements immediately upon arrival.",[cite: 3]
-                "Inspect and season flat-top griddle surface, verifying 350°F operating temperature.",[cite: 3]
-                "Calibrate probe thermometers and initialize HACCP opening temperature logs.",[cite: 3]
-                "Stock freezer baskets with french fries, chicken, and appetizers within reach.",[cite: 3]
-                "Coordinate shared line setup duties and sanitizer bucket rotation between split team members.",[cite: 3]
-                "End of shift - clean grill and remove/empty grease trap.",[cite: 3]
-                "End of shift - remove pancake batter bucket from the line and place in walk-in.",[cite: 3]
-                "End of shift - Assist line partner with cleaning the floor."[cite: 3]
+                "Set up the grill with ready-to-fire sausage and bacon; prepare backup supplies and cook if needed.",
+                "Place the batter bucket out with a 6th pan spacer and 1/4 ice near the bread station.",
+                "Position pancake batter bucket inside with a large ladle and cover.",
+                "Check fryolator low-boy freezer for required re-stocks.",
+                "Set up a three-bay batter system for chicken tenders and wet batter bucket for haddock.",
+                "Inspect fryolator oil quality; change immediately if black or smoking.",
+                "Check the upper bread shelf for burger buns, hot dog buns, sub rolls, and tortillas.",
+                "Check thaw pull requirements immediately upon arrival.",
+                "Inspect and season flat-top griddle surface, verifying 350°F operating temperature.",
+                "Calibrate probe thermometers and initialize HACCP opening temperature logs.",
+                "Stock freezer baskets with french fries, chicken, and appetizers within reach.",
+                "Coordinate shared line setup duties and sanitizer bucket rotation between split team members.",
+                "End of shift - clean grill and remove/empty grease trap.",
+                "End of shift - remove pancake batter bucket from the line and place in walk-in.",
+                "End of shift - Assist line partner with cleaning the floor."
             ],
             es: [
                 "Prepare la parrilla con salchicha y tocino listos para cocinar; prepare suministros de respaldo y cocine si es necesario.",
@@ -374,21 +374,21 @@ const CHECKLIST_SPECS = {
         title: { en: "Range/Mid-Split Close Checklist", es: "Lista de Cierre de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
-                "One hour prior to closing, break down vegetable and poach pans and bring to the dish pit.",[cite: 3]
-                "Brush down range tops and clean under burners.",[cite: 3]
-                "Clean traps for range and small grill, and shut down one oven.",[cite: 3]
-                "Clean all stainless steel in the egg station, including oven doors, Traulsen, and tables.",[cite: 3]
-                "Clean interior of traulsen, including wire racks.",[cite: 3]
-                "Restock traulsen, ensuring all product is rotated and covered.",[cite: 3]
-                "Clean exterior of the oven and clean interior doors of ovens.",[cite: 3]
-                "Change foil liners on top shelves as needed.",[cite: 3]
-                "Restock bread as necessary, rotating product.",[cite: 3]
-                "Drain and ice fish in the walk-in.",[cite: 3]
-                "One hour prior to closing, remove all utensils from the sandwich unit.",[cite: 3]
-                "Clean the interior top and bottom of the sandwich unit, pull out the unit, and clean the floor behind it.",[cite: 3]
-                "Flip all pans and restock items properly (one full pan per item; do not double stock).",[cite: 3]
-                "Clean the microwave inside and out, restock plates and to-go containers, and ensure sandwich items are covered.",[cite: 3]
-                "Assist other cooks to thoroughly sweep, deck brush, and mop the line floor, and check with a manager prior to leaving."[cite: 3]
+                "One hour prior to closing, break down vegetable and poach pans and bring to the dish pit.",
+                "Brush down range tops and clean under burners.",
+                "Clean traps for range and small grill, and shut down one oven.",
+                "Clean all stainless steel in the egg station, including oven doors, Traulsen, and tables.",
+                "Clean interior of traulsen, including wire racks.",
+                "Restock traulsen, ensuring all product is rotated and covered.",
+                "Clean exterior of the oven and clean interior doors of ovens.",
+                "Change foil liners on top shelves as needed.",
+                "Restock bread as necessary, rotating product.",
+                "Drain and ice fish in the walk-in.",
+                "One hour prior to closing, remove all utensils from the sandwich unit.",
+                "Clean the interior top and bottom of the sandwich unit, pull out the unit, and clean the floor behind it.",
+                "Flip all pans and restock items properly (one full pan per item; do not double stock).",
+                "Clean the microwave inside and out, restock plates and to-go containers, and ensure sandwich items are covered.",
+                "Assist other cooks to thoroughly sweep, deck brush, and mop the line floor, and check with a manager prior to leaving."
             ],
             es: [
                 "Una hora antes del cierre, desmonte las cacerolas de verduras y de huevos pochados y llévelas al área de lavado.",
@@ -413,20 +413,20 @@ const CHECKLIST_SPECS = {
         title: { en: "Grill/Fry/Mid-Split Close Checklist", es: "Lista de Cierre Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
-                "One hour prior to closing, flip pancake batter to a 6th pan with a ladle and bring batter gun to the dish pit.",[cite: 3, 4]
-                "Wipe and scrub the lower shelf of the grill and clean temperature dials.",[cite: 3, 4]
-                "Strain fryers of excess crumbs and food particles.",[cite: 3, 4]
-                "Wipe down stainless dividers and front of fryers, and close down one fryolator.",[cite: 3, 4]
-                "Clean sink by steam tables, then break down and thoroughly clean steam tables.",[cite: 3, 4]
-                "Place product from steam tables into ten (10) plastic cambros and place on cart.",[cite: 3, 4]
-                "Wrap leftover sausage and bacon with foil, label, and place on the lower rack of the cart.",[cite: 3, 4]
-                "Make a note on the dry erase board if fryolators need an oil change.",[cite: 3, 4]
-                "At close, clean grill, grill rails, and wall behind grill.",[cite: 4]
-                "Pull the grease trap for grill and dump the waste oil into a metal German pan.",[cite: 4]
-                "Run grease to the outside grease trap (DO NOT leave grease inside overnight!).",[cite: 4]
-                "Restock freezer with french fries, chicken, mac and cheese, etc.",[cite: 4]
-                "Perform full mid-unit closing breakdown (clean interior/exterior, rotate pans, cover items).",[cite: 4]
-                "Assist with thaw pull, sweep and mop floors, and check with the manager prior to clocking out.",[cite: 4]
+                "One hour prior to closing, flip pancake batter to a 6th pan with a ladle and bring batter gun to the dish pit.",
+                "Wipe and scrub the lower shelf of the grill and clean temperature dials.",
+                "Strain fryers of excess crumbs and food particles.",
+                "Wipe down stainless dividers and front of fryers, and close down one fryolator.",
+                "Clean sink by steam tables, then break down and thoroughly clean steam tables.",
+                "Place product from steam tables into ten (10) plastic cambros and place on cart.",
+                "Wrap leftover sausage and bacon with foil, label, and place on the lower rack of the cart.",
+                "Make a note on the dry erase board if fryolators need an oil change.",
+                "At close, clean grill, grill rails, and wall behind grill.",
+                "Pull the grease trap for grill and dump the waste oil into a metal German pan.",
+                "Run grease to the outside grease trap (DO NOT leave grease inside overnight!).",
+                "Restock freezer with french fries, chicken, mac and cheese, etc.",
+                "Perform full mid-unit closing breakdown (clean interior/exterior, rotate pans, cover items).",
+                "Assist with thaw pull, sweep and mop floors, and check with the manager prior to clocking out.",
                 "Ensure all closing temperature logs and HACCP records are signed and secured."
             ],
             es: [
