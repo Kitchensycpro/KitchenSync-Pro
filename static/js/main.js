@@ -173,7 +173,7 @@ function t(key) {
 // 2. DATA SPECS: ALL 7 CHECKLISTS (BILINGUAL)
 // ==========================================
 const CHECKLIST_SPECS = {
-    range_open: {
+    rangeOpen: {
         title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa" },
         items: {
             en: [
@@ -212,7 +212,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    mid_open: {
+    midOpen: {
         title: { en: "Mid Open Checklist", es: "Lista de Apertura de Media Línea" },
         items: {
             en: [
@@ -237,7 +237,7 @@ const CHECKLIST_SPECS = {
                 "Prepare masa adicional para pan francés y crepas según sea necesario.",
                 "Revise el inventario de todo el pan en el lado de la plancha (muffins ingleses, pan francés y muffins).",
                 "Llene la mesa de vapor hasta la mitad con agua y conéctela para encenderla.",
-                "coloque 12 bandejas de plástico de mantenimiento caliente en la mesa de vapor.",
+                "Coloque 12 bandejas de plástico de mantenimiento caliente en la mesa de vapor.",
                 "Lleve todos los artículos de servicio en la mesa de vapor a una temperatura interna mínima de 131 grados Fahrenheit (Solo mantenimiento caliente, ¡NO para calentar!). Transfiera a bandejas nuevas en la mesa.",
                 "Coloque todos los utensilios correctos en la mesa fría y la mesa de vapor listos para el servicio.",
                 "Inspeccione las temperaturas del refrigerador de preparación intermedio para asegurarse de que se mantengan de manera segura entre 34°F y 38°F.",
@@ -251,7 +251,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grill_fry_open: {
+    grillFryOpen: {
         title: { en: "Grill/Fry Open Checklist", es: "Lista de Apertura de Parrilla y Freidora" },
         items: {
             en: [
@@ -290,7 +290,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    range_mid_split_open: {
+    rangeMidSplitOpen: {
         title: { en: "Range/Mid-Split Open Checklist", es: "Lista de Apertura de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -329,7 +329,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grill_fry_mid_split_open: {
+    grillFryMidSplitOpen: {
         title: { en: "Grill/Fry/Mid-Split Open Checklist", es: "Lista de Apertura Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -368,7 +368,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    range_mid_split_close: {
+    rangeMidSplitClose: {
         title: { en: "Range/Mid-Split Close Checklist", es: "Lista de Cierre de Estufa/Media Línea (Turno Partido)" },
         items: {
             en: [
@@ -407,7 +407,7 @@ const CHECKLIST_SPECS = {
             ]
         }
     },
-    grill_fry_mid_split_close: {
+    grillFryMidSplitClose: {
         title: { en: "Grill/Fry/Mid-Split Close Checklist", es: "Lista de Cierre Parrilla/Freidora/Media Línea (Turno Partido)" },
         items: {
             en: [
