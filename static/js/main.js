@@ -646,13 +646,17 @@ function renderCookChecklistGated() {
 
     // Render Special Project / Extra Duty Banner if assigned
     if (Store.user && Store.user.specialProject) {
+        const isCompleted = Store.user.specialProjectStatus === "Completed - Pending Sign-Off";
         const projBanner = document.createElement('div');
         projBanner.className = 'card';
         projBanner.style.cssText = 'margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;';
         projBanner.innerHTML = `
             <h4 style="color: #1e40af; margin-top: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
             <p style="font-size: 0.95rem; color: #1e3a8a; font-weight: 600; margin: 4px 0 10px 0;">${Store.user.specialProject}</p>
-            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="completeSpecialProject()">Mark Task Complete ✅</button>
+            ${isCompleted ? 
+                `<span style="color: #166534; font-weight: bold; font-size: 0.85rem;">✅ Submitted - Awaiting Manager Sign-Off</span>` :
+                `<button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="completeSpecialProject()">Mark Task Complete & Submit 💾</button>`
+            }
         `;
         container.appendChild(projBanner);
     }
@@ -701,9 +705,12 @@ function renderCookChecklistGated() {
 
 function completeSpecialProject() {
     if (!Store.user) return;
-    Store.user.specialProject = null;
+    
+    // Mark as completed but pending sign-off
+    Store.user.specialProjectStatus = "Completed - Pending Sign-Off";
+    
     ApiService.request('saveEmployee', { employee: Store.user }).then(() => {
-        alert("🎉 Special project marked complete! Great job.");
+        alert("✅ Special project marked complete and submitted to management for sign-off!");
         UIController.refreshActiveView();
     });
 }
@@ -1253,6 +1260,9 @@ function renderManagerDashboard() {
     if (!container) return;
     const lookupDate = Store.selectedShiftDate;
     const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
+    
+    // Filter employees with completed special projects pending sign-off
+    const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -1261,6 +1271,31 @@ function renderManagerDashboard() {
         </div>
         <div id="manager-assignment-widget-container"></div>
         <div id="special-project-widget-container"></div>
+        
+        <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
+            <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Assigned Project / Task</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
+                        <tr>
+                            <td><strong>${e.name || e.Name}</strong></td>
+                            <td>${e.specialProject}</td>
+                            <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
+                            <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
@@ -1349,6 +1384,9 @@ function renderGMDashboard() {
     const lookupDate = Store.selectedShiftDate;
     const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
 
+    // Filter employees with completed special projects pending sign-off
+    const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
@@ -1404,6 +1442,31 @@ function renderGMDashboard() {
         </div>
         <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
         <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
+        
+        <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
+            <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Assigned Project / Task</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
+                        <tr>
+                            <td><strong>${e.name || e.Name}</strong></td>
+                            <td>${e.specialProject}</td>
+                            <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
+                            <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
@@ -1448,7 +1511,6 @@ function renderGMDashboard() {
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
 }
-
 function executeMasterReset() {
     if (Store.role !== 'gm') return;
     if (confirm("⚠️ WARNING: This will clear all local application data, shifts, messages, and reset system records. Are you sure you want to proceed?")) {
