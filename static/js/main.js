@@ -644,13 +644,26 @@ function renderCookChecklistGated() {
     if (!container) return;
     container.innerHTML = '';
 
+    // Render Special Project / Extra Duty Banner if assigned
+    if (Store.user && Store.user.specialProject) {
+        const projBanner = document.createElement('div');
+        projBanner.className = 'card';
+        projBanner.style.cssText = 'margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;';
+        projBanner.innerHTML = `
+            <h4 style="color: #1e40af; margin-top: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+            <p style="font-size: 0.95rem; color: #1e3a8a; font-weight: 600; margin: 4px 0 10px 0;">${Store.user.specialProject}</p>
+            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="completeSpecialProject()">Mark Task Complete ✅</button>
+        `;
+        container.appendChild(projBanner);
+    }
+
     if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
         Store.assignedChecklistKey = Store.user.station;
         Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
     }
 
     if (!Store.assignedStation || !Store.assignedChecklistKey) {
-        container.innerHTML = `
+        container.innerHTML += `
             <div class="card" style="background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;">
                 <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Cook's Dashboard - Station Access Pending</h3>
                 <p style="color: #92400e; font-size: 0.95rem;">No checklist or station has been assigned to you yet by a Manager or Shift Manager.</p>
@@ -684,6 +697,15 @@ function renderCookChecklistGated() {
             <button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button>
             <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
         </div>`;
+}
+
+function completeSpecialProject() {
+    if (!Store.user) return;
+    Store.user.specialProject = null;
+    ApiService.request('saveEmployee', { employee: Store.user }).then(() => {
+        alert("🎉 Special project marked complete! Great job.");
+        UIController.refreshActiveView();
+    });
 }
 
 function renderManagerChecklist() {
@@ -847,6 +869,76 @@ function renderManagerAssignmentWidget() {
         </div>`;
 }
 
+function renderSpecialProjectWidget() {
+    const container = document.getElementById('special-project-widget-container');
+    if (!container) return;
+
+    // Check if today is Saturday (6) or Sunday (0)
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sun, 6 = Sat
+    const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
+
+    if (isWeekendDay) {
+        container.innerHTML = `
+            <div class="card" style="background: #fef2f2; border: 1px solid #fecaca; margin-bottom: 1.5rem;">
+                <h4 style="color: #991b1b; margin-top: 0;">🛠️ Special Projects & Extra Duties</h4>
+                <p style="color: #b91c1c; font-size: 0.85rem; margin-bottom: 0;">
+                    🚫 <strong>Restricted:</strong> Special project assignments are disabled on Saturday and Sunday day shifts per operational guidelines.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    const uniqueEmployees = Array.from(new Map(Store.employees.map(emp => [String(emp.id || emp.ID || emp.name || emp.Name).trim(), emp])).values());
+    const optionsHtml = uniqueEmployees.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('');
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Delegate specialized tasks (e.g., fryolator oil change, deep clean ovens, walk-in detailing) to cooks during slower shifts.</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 1rem;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
+                    <select id="special-proj-emp" class="form-control" style="width: 100%; margin-top: 4px;">
+                        <option value="">-- Select Cook --</option>
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold;">Project / Task Description:</label>
+                    <input type="text" id="special-proj-desc" class="form-control" placeholder="e.g., Deep clean ovens & detail walk-in" style="width: 100%; margin-top: 4px;">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="assignSpecialProject()">Assign to Cook's Dashboard 📌</button>
+        </div>
+    `;
+}
+
+function assignSpecialProject() {
+    const today = new Date();
+    if (today.getDay() === 0 || today.getDay() === 6) {
+        alert("❌ Error: Special project assignments are not permitted on Saturday or Sunday day shifts.");
+        return;
+    }
+
+    const empId = document.getElementById('special-proj-emp').value;
+    const taskDesc = document.getElementById('special-proj-desc').value.trim();
+
+    if (!empId || !taskDesc) {
+        alert("Please select a cook and enter a task description.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) return;
+
+    emp.specialProject = taskDesc;
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        alert(`✅ Special project assigned successfully to ${emp.name || emp.Name}! It will appear on their dashboard.`);
+        document.getElementById('special-proj-desc').value = '';
+    });
+}
 function assignCooksGroup(selectIds) {
     let assignedCount = 0;
     selectIds.forEach(id => {
@@ -1168,6 +1260,7 @@ function renderManagerDashboard() {
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports.</p>
         </div>
         <div id="manager-assignment-widget-container"></div>
+        <div id="special-project-widget-container"></div>
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
@@ -1208,8 +1301,8 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
     renderMessageBoard();
     renderManagerAssignmentWidget();
+    renderSpecialProjectWidget();
 }
-
 function handleShiftCalendarLookup(dateVal) {
     Store.selectedShiftDate = dateVal;
     renderManagerDashboard();
@@ -1310,6 +1403,7 @@ function renderGMDashboard() {
             </div>
         </div>
         <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
+        <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
@@ -1352,6 +1446,7 @@ function renderGMDashboard() {
                 <tbody>${pendingCerts.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending certifications.</td></tr>` : pendingCerts.map(c => `<tr><td>${c.empId || c.EMPID}</td><td>${c.modId || c.MODID}</td><td>${c.score}%</td><td><button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="gmSignOffCert('${c.empId || c.EMPID}','${c.modId || c.MODID}')">Approve ✅</button></td></tr>`).join('')}</tbody></table>
         </div>`;
     renderManagerAssignmentWidget();
+    renderSpecialProjectWidget();
 }
 
 function executeMasterReset() {
