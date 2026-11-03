@@ -604,6 +604,7 @@ function handleLogin(e) {
 
     if (pin === CONFIG.GM_MASTER_PASSCODE) {
         Store.setSession({ id: "GM-ADMIN", name: "General Manager", role: "gm", station: "All" }, "gm");
+        loadGlobalAppData(); // 👈 Fetch global cloud data on login
         finalizeLogin();
         return;
     }
@@ -611,6 +612,7 @@ function handleLogin(e) {
     const emp = Store.employees.find(e => String(e.pin || e.PIN).trim() === pin && (e.active === true || String(e.active).toLowerCase() === 'true'));
     if (emp) {
         Store.setSession(emp, emp.role || emp.Role || 'cook');
+        loadGlobalAppData(); // 👈 Fetch global cloud data on login
         finalizeLogin();
         return;
     }
@@ -618,6 +620,7 @@ function handleLogin(e) {
     ApiService.request('authenticate', { password: pin }).then(res => {
         if (res && res.success) {
             Store.setSession(res.employee || { id: "EMP-001", name: "Employee", role: res.role || "cook", station: "range_open" }, res.role || 'cook');
+            loadGlobalAppData(); // 👈 Fetch global cloud data on login
             finalizeLogin();
         } else {
             alert(res && res.error ? res.error : "Invalid PIN or Passcode.");
@@ -1610,4 +1613,37 @@ function deleteEmployee(empId) {
     if (!confirm("Remove this employee?")) return;
     Store.employees = Store.employees.filter(e => String(e.id || e.ID).trim() !== String(empId).trim());
     renderRosterView();
+}
+
+function loadGlobalAppData() {
+    ApiService.request('getAppData', {}).then(response => {
+        if (response && response.success) {
+            Store.shifts = response.shifts || [];
+            Store.employees = response.employees || [];
+            Store.certifications = response.certifications || [];
+            
+            // Backup to local storage for offline use
+            localStorage.setItem('kitchenSyncGlobalStore', JSON.stringify({
+                shifts: Store.shifts,
+                employees: Store.employees,
+                certifications: Store.certifications
+            }));
+
+            // Refresh the current view with live cloud data
+            if (typeof UIController !== 'undefined' && UIController.refreshActiveView) {
+                UIController.refreshActiveView();
+            } else if (typeof renderActiveDashboard === 'function') {
+                renderActiveDashboard();
+            }
+        }
+    }).catch(err => {
+        console.error("Failed to load global cloud data:", err);
+        const cached = localStorage.getItem('kitchenSyncGlobalStore');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            Store.shifts = parsed.shifts || [];
+            Store.employees = parsed.employees || [];
+            Store.certifications = parsed.certifications || [];
+        }
+    });
 }
