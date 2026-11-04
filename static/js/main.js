@@ -937,24 +937,47 @@ function assignSpecialProject() {
         return;
     }
 
-    const empId = document.getElementById('special-proj-emp').value;
-    const taskDesc = document.getElementById('special-proj-desc').value.trim();
+    const empIdSelect = document.getElementById('special-proj-emp');
+    const taskDescInput = document.getElementById('special-proj-desc');
+    
+    if (!empIdSelect || !taskDescInput) return;
+
+    const empId = empIdSelect.value;
+    const taskDesc = taskDescInput.value.trim();
 
     if (!empId || !taskDesc) {
         alert("Please select a cook and enter a task description.");
         return;
     }
 
+    // Find the specific employee in our local store
     const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
-    if (!emp) return;
+    if (!emp) {
+        alert("❌ Error: Selected employee could not be found.");
+        return;
+    }
 
+    // Assign project details directly to their record object
     emp.specialProject = taskDesc;
-    ApiService.request('saveEmployee', { employee: emp }).then(() => {
-        alert(`✅ Special project assigned successfully to ${emp.name || emp.Name}! It will appear on their dashboard.`);
-        document.getElementById('special-proj-desc').value = '';
+    emp.specialProjectStatus = "Assigned / In Progress";
+
+    // Save this specific employee record to the Google Sheet backend
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Special project assigned successfully to ${emp.name || emp.Name}! It will appear on their dashboard.`);
+            taskDescInput.value = '';
+            empIdSelect.value = '';
+            
+            // Immediately reload global data so state is synced across all devices
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Project saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error assigning special project:", err);
+        alert("❌ Network error connecting to backend.");
     });
 }
-
 function assignCooksGroup(selectIds) {
     let assignedCount = 0;
     selectIds.forEach(id => {
