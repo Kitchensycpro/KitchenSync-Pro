@@ -13,6 +13,7 @@ const Store = {
     certifications: [],
     messages: [],
     recipes: [],
+    approvals: [],
     assignedStation: null,
     assignedChecklistKey: null,
     selectedShiftDate: new Date().toISOString().split('T')[0],
@@ -50,25 +51,7 @@ const ApiService = {
     },
 
     async fetchAll() {
-        try {
-            const results = await Promise.all([
-                this.request('getEmployees'),
-                this.request('getShifts'),
-                this.request('getCerts'),
-                this.request('getMessages'),
-                this.request('getRecipes')
-            ]);
-
-            if (results[0]) Store.employees = results[0];
-            if (results[1]) Store.shifts = results[1];
-            if (results[2]) Store.certifications = results[2];
-            if (results[3]) Store.messages = results[3];
-            if (results[4]) Store.recipes = results[4];
-
-            UIController.refreshActiveView();
-        } catch (err) {
-            console.error('Error fetching initial data:', err);
-        }
+        loadGlobalAppData();
     }
 };
 
@@ -79,7 +62,7 @@ const UIController = {
             const el = document.getElementById(id);
             if (el) el.value = today;
         });
-        ApiService.fetchAll();
+        loadGlobalAppData();
     },
     refreshActiveView() {
         const view = document.querySelector('.app-view.active');
@@ -419,14 +402,14 @@ const CHECKLIST_SPECS = {
                 "Limpie los divisores de acero inoxidable y el frente de las freidoras, y apague una freidora.",
                 "Limpie el fregadero junto a las mesas de vapor, luego desmonte y limpie a fondo las mesas de vapor.",
                 "Coloque el producto de las mesas de vapor en diez (10) cambros de plástico y colóquelos en el carrito.",
-                "Envuelva la salchicha y el tocino sobrantes con papel aluminio, etiquételos y colóquelos en la rejilla inferior del carrito.",
-                "Anote en el pizarrón blanco si las freidoras necesitan un cambio de aceite.",
-                "Al cierre, limpie la parrilla, los rieles de la parrilla y la pared detrás de la misma.",
-                "Saque la trampa de grasa de la parrilla y deseche el aceite usado en una sartén metálica alemana.",
-                "Lleve la grasa a la trampa de grasa exterior (¡NO deje grasa adentro durante la noche!).",
+                "Envuelva la salchicha y el tocino sobrantes con papel aluminio, etiquételos y colóquelos en los estantes inferiores del carrito.",
+                "Anote en el pizarrón blanco si el aceite de la freidora necesita cambio.",
+                "Al cierre, limpie la parrilla, los rieles y la pared detrás de ella.",
+                "Retire la trampa de grasa de la parrilla y vacíe el aceite usado en una sartén metálica alemana.",
+                "Lleve la grasa a la trampa exterior (¡NO deje grasa adentro durante la noche!).",
                 "Reabastezca el congelador con papas fritas, pollo, macarrones con queso, etc.",
-                "Realice el desglose de cierre completo de la unidad media (limpiar interior/exterior, rotar bandejas, cubrir artículos).",
-                "Ayude con el descongelamiento, barra y trapee los pisos, y verifique con el gerente antes de registrar su salida.",
+                "Realice el desglose completo de la unidad media (limpiar interior/exterior, rotar bandejas, cubrir artículos).",
+                "Ayude con el descongelamiento, barra y trapee los pisos, y consulte con el gerente antes de registrar su salida.",
                 "Asegúrese de que todos los registros de temperatura de cierre y registros HACCP estén firmados y asegurados."
             ]
         }
@@ -604,7 +587,7 @@ function handleLogin(e) {
 
     if (pin === CONFIG.GM_MASTER_PASSCODE) {
         Store.setSession({ id: "GM-ADMIN", name: "General Manager", role: "gm", station: "All" }, "gm");
-        loadGlobalAppData(); // 👈 Fetch global cloud data on login
+        loadGlobalAppData();
         finalizeLogin();
         return;
     }
@@ -612,7 +595,7 @@ function handleLogin(e) {
     const emp = Store.employees.find(e => String(e.pin || e.PIN).trim() === pin && (e.active === true || String(e.active).toLowerCase() === 'true'));
     if (emp) {
         Store.setSession(emp, emp.role || emp.Role || 'cook');
-        loadGlobalAppData(); // 👈 Fetch global cloud data on login
+        loadGlobalAppData();
         finalizeLogin();
         return;
     }
@@ -620,7 +603,7 @@ function handleLogin(e) {
     ApiService.request('authenticate', { password: pin }).then(res => {
         if (res && res.success) {
             Store.setSession(res.employee || { id: "EMP-001", name: "Employee", role: res.role || "cook", station: "range_open" }, res.role || 'cook');
-            loadGlobalAppData(); // 👈 Fetch global cloud data on login
+            loadGlobalAppData();
             finalizeLogin();
         } else {
             alert(res && res.error ? res.error : "Invalid PIN or Passcode.");
@@ -647,7 +630,6 @@ function renderCookChecklistGated() {
     if (!container) return;
     container.innerHTML = '';
 
-    // Render Special Project / Extra Duty Banner if assigned
     if (Store.user && Store.user.specialProject) {
         const isCompleted = Store.user.specialProjectStatus === "Completed - Pending Sign-Off";
         const projBanner = document.createElement('div');
@@ -708,10 +690,7 @@ function renderCookChecklistGated() {
 
 function completeSpecialProject() {
     if (!Store.user) return;
-    
-    // Mark as completed but pending sign-off
     Store.user.specialProjectStatus = "Completed - Pending Sign-Off";
-    
     ApiService.request('saveEmployee', { employee: Store.user }).then(() => {
         alert("✅ Special project marked complete and submitted to management for sign-off!");
         UIController.refreshActiveView();
@@ -883,9 +862,8 @@ function renderSpecialProjectWidget() {
     const container = document.getElementById('special-project-widget-container');
     if (!container) return;
 
-    // Check if today is Saturday (6) or Sunday (0)
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sun, 6 = Sat
+    const dayOfWeek = today.getDay();
     const isWeekendDay = (dayOfWeek === 0 || dayOfWeek === 6);
 
     if (isWeekendDay) {
@@ -949,6 +927,7 @@ function assignSpecialProject() {
         document.getElementById('special-proj-desc').value = '';
     });
 }
+
 function assignCooksGroup(selectIds) {
     let assignedCount = 0;
     selectIds.forEach(id => {
@@ -1264,7 +1243,6 @@ function renderManagerDashboard() {
     const lookupDate = Store.selectedShiftDate;
     const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
     
-    // Filter employees with completed special projects pending sign-off
     const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
 
     container.innerHTML = `
@@ -1341,6 +1319,7 @@ function renderManagerDashboard() {
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
 }
+
 function handleShiftCalendarLookup(dateVal) {
     Store.selectedShiftDate = dateVal;
     renderManagerDashboard();
@@ -1386,8 +1365,6 @@ function renderGMDashboard() {
 
     const lookupDate = Store.selectedShiftDate;
     const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
-
-    // Filter employees with completed special projects pending sign-off
     const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
 
     container.innerHTML = `
@@ -1514,6 +1491,7 @@ function renderGMDashboard() {
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
 }
+
 function executeMasterReset() {
     if (Store.role !== 'gm') return;
     if (confirm("⚠️ WARNING: This will clear all local application data, shifts, messages, and reset system records. Are you sure you want to proceed?")) {
@@ -1621,15 +1599,19 @@ function loadGlobalAppData() {
             Store.shifts = response.shifts || [];
             Store.employees = response.employees || [];
             Store.certifications = response.certifications || [];
+            Store.messages = response.messages || [];
+            Store.recipes = response.recipes || [];
+            Store.approvals = response.approvals || [];
             
-            // Backup to local storage for offline use
             localStorage.setItem('kitchenSyncGlobalStore', JSON.stringify({
                 shifts: Store.shifts,
                 employees: Store.employees,
-                certifications: Store.certifications
+                certifications: Store.certifications,
+                messages: Store.messages,
+                recipes: Store.recipes,
+                approvals: Store.approvals
             }));
 
-            // Refresh the current view with live cloud data
             if (typeof UIController !== 'undefined' && UIController.refreshActiveView) {
                 UIController.refreshActiveView();
             } else if (typeof renderActiveDashboard === 'function') {
@@ -1644,6 +1626,9 @@ function loadGlobalAppData() {
             Store.shifts = parsed.shifts || [];
             Store.employees = parsed.employees || [];
             Store.certifications = parsed.certifications || [];
+            Store.messages = parsed.messages || [];
+            Store.recipes = parsed.recipes || [];
+            Store.approvals = parsed.approvals || [];
         }
     });
 }
