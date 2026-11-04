@@ -1082,24 +1082,104 @@ function managerSignOffSpecialProject(empId) {
 function renderMessageBoard() {
     const container = document.getElementById('message-board-container');
     if (!container) return;
+
+    // Default selected date to today if not already set
+    if (!Store.selectedMessageDate) {
+        Store.selectedMessageDate = new Date().toISOString().split('T')[0];
+    }
+
     const categories = ["Maintenance", "Injuries", "Customers", "Employees", "86 Items", "General"];
-    let html = `<div class="card" style="margin-bottom: 1.5rem;"><h3 style="color: #1e3a8a; margin-top: 0;">💬 Management Message Board</h3><p style="font-size: 0.85rem; color: #64748b;">Post operational updates across categories.</p><form onsubmit="postMessage(event)" style="display: flex; flex-direction: column; gap: 10px; margin-top: 1rem;"><select id="msg-category" class="form-control" required><option value="">-- Select Channel --</option>${categories.map(c => `<option value="${c}">${c}</option>`).join('')}</select><textarea id="msg-text" class="form-control" rows="3" placeholder="Type operational update..." required></textarea><button type="submit" class="btn btn-primary" style="align-self: flex-start;">Post Message 📢</button></form></div><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">`;
+    
+    let html = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="color: #1e3a8a; margin: 0 0 4px 0;">💬 Management Message Board</h3>
+                    <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Post operational updates across channels.</p>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Filter Date:</label>
+                    <input type="date" id="msg-calendar-filter" class="form-control" value="${Store.selectedMessageDate}" onchange="handleMessageDateLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                </div>
+            </div>
+
+            <form onsubmit="postMessage(event)" style="display: flex; flex-direction: column; gap: 10px; margin-top: 1rem;">
+                <select id="msg-category" class="form-control" required>
+                    <option value="">-- Select Channel --</option>
+                    ${categories.map(c => `<option value="${c}">${c}</option>`).join('')}
+                </select>
+                <textarea id="msg-text" class="form-control" rows="3" placeholder="Type operational update..." required></textarea>
+                <button type="submit" class="btn btn-primary" style="align-self: flex-start;">Post Message 📢</button>
+            </form>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+    `;
+
     categories.forEach(cat => {
-        const catMessages = Store.messages.filter(m => String(m.category).trim().toLowerCase() === cat.toLowerCase());
-        html += `<div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;"><h4 style="color: #1e3a8a; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">📌 ${cat}</h4><div style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">${catMessages.length === 0 ? `<p style="font-size: 0.80rem; color: #94a3b8; font-style: italic;">No posts.</p>` : catMessages.map(m => `<div style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.85rem;"><div style="display: flex; justify-content: space-between; font-weight: bold; color: #334155; margin-bottom: 4px;"><span>${m.authorName || 'Staff'}</span><span style="font-size:0.75rem;color:#94a3b8;">${m.timestamp || ''}</span></div><p style="margin: 0; color: #475569;">${m.messageText || m.text || ''}</p></div>`).join('')}</div></div>`;
+        // Filter messages matching the category AND the selected filter date
+        const catMessages = Store.messages.filter(m => {
+            const matchesCat = String(m.category || "").trim().toLowerCase() === cat.toLowerCase();
+            
+            // Match against explicit message date or timestamp string
+            const msgDateStr = String(m.date || m.timestamp || "").trim().split('T')[0];
+            const matchesDate = msgDateStr.includes(Store.selectedMessageDate);
+            
+            return matchesCat && matchesDate;
+        });
+
+        html += `
+            <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                <h4 style="color: #1e3a8a; margin-top: 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 6px;">📌 ${cat}</h4>
+                <div style="max-height:250px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                    ${catMessages.length === 0 ? 
+                        `<p style="font-size: 0.80rem; color: #94a3b8; font-style: italic;">No posts for ${Store.selectedMessageDate}.</p>` : 
+                        catMessages.map(m => `
+                            <div style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; color: #334155; margin-bottom: 4px;">
+                                    <span>${m.authorName || 'Staff'}</span>
+                                    <span style="font-size:0.75rem;color:#94a3b8;">${m.timestamp || ''}</span>
+                                </div>
+                                <p style="margin: 0; color: #475569;">${m.messageText || m.text || ''}</p>
+                            </div>
+                        `).join('')}
+                </div>
+            </div>
+        `;
     });
+
     html += `</div>`;
     container.innerHTML = html;
+}
+
+function handleMessageDateLookup(dateVal) {
+    if (!dateVal) return;
+    Store.selectedMessageDate = String(dateVal).trim().split('T')[0];
+    renderMessageBoard();
 }
 
 function postMessage(e) {
     e.preventDefault();
     if (!Store.user) return;
+    
     const category = document.getElementById('msg-category').value;
     const messageText = document.getElementById('msg-text').value.trim();
-    const payload = { id: `MSG-${Date.now()}`, category, authorName: Store.user.name, timestamp: new Date().toLocaleString(), messageText };
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const payload = { 
+        id: `MSG-${Date.now()}`, 
+        category, 
+        authorName: Store.user.name, 
+        timestamp: new Date().toLocaleString(), 
+        date: todayStr, // Added explicit date string for calendar filtering
+        messageText 
+    };
+
     Store.messages.push(payload);
-    ApiService.request('saveMessage', { message: payload }).then(() => { document.getElementById('msg-text').value = ''; renderMessageBoard(); });
+    ApiService.request('saveMessage', { message: payload }).then(() => { 
+        document.getElementById('msg-text').value = ''; 
+        Store.selectedMessageDate = todayStr; // Automatically shift view to today's date upon posting
+        renderMessageBoard(); 
+    });
 }
 
 let activeBookTab = 'recipes';
