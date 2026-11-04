@@ -1327,10 +1327,19 @@ function renderCookDashboard() {
 function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
     if (!container) return;
-    const lookupDate = Store.selectedShiftDate;
-    const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
     
-    const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
+    const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
+    const filteredShifts = Store.shifts.filter(s => {
+        const shiftDate = String(s.date || s.Date || "").trim().split('T')[0];
+        return shiftDate === lookupDate;
+    });
+    
+    // Robust filter that catches any variation of completed status or whitespace
+    const pendingProjects = Store.employees.filter(e => {
+        const proj = String(e.specialProject || e.SpecialProject || "").trim();
+        const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
+        return proj !== "" && (status.includes("pending") || status.includes("completed"));
+    });
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -1355,7 +1364,7 @@ function renderManagerDashboard() {
                     ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
                         <tr>
                             <td><strong>${e.name || e.Name}</strong></td>
-                            <td>${e.specialProject}</td>
+                            <td>${e.specialProject || e.SpecialProject}</td>
                             <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
                             <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
                         </tr>
@@ -1387,14 +1396,14 @@ function renderManagerDashboard() {
                 <tbody>
                     ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => `
                         <tr>
-                            <td>${s.date}</td>
-                            <td><strong>${s.empName}</strong></td>
-                            <td>${String(s.role || '').toUpperCase()}</td>
-                            <td>${s.station || 'General'}</td>
-                            <td>${s.scorePct}%</td>
-                            <td>${Number(s.scorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
+                            <td>${s.date || s.Date}</td>
+                            <td><strong>${s.empName || s.EmpName}</strong></td>
+                            <td>${String(s.role || s.Role || '').toUpperCase()}</td>
+                            <td>${s.station || s.Station || 'General'}</td>
+                            <td>${s.scorePct || s.ScorePct}%</td>
+                            <td>${Number(s.scorePct || s.ScorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
                             <td>
-                                ${s.managerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id}')">Sign Off ✍️</button>`}
+                                ${s.managerSignOff || s.ManagerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id || s.ID}')">Sign Off ✍️</button>`}
                             </td>
                         </tr>
                     `).join('')}
@@ -1422,21 +1431,31 @@ function renderGMDashboard() {
     });
     const startDate = new Date(CONFIG.PROGRAM_START_DATE);
     const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 13);
-    const cycleShifts = Store.shifts.filter(s => { const d = new Date(s.date); return d >= startDate && d <= endDate; });
+    const cycleShifts = Store.shifts.filter(s => { 
+        const sDateStr = String(s.date || s.Date || "").trim().split('T')[0];
+        const d = new Date(sDateStr); 
+        return d >= startDate && d <= endDate; 
+    });
     const dailyCompliance = {};
     for (let i = 0; i < 14; i++) {
         const curr = new Date(startDate); curr.setDate(curr.getDate() + i);
         dailyCompliance[curr.toISOString().split('T')[0]] = { total: 0, sum: 0 };
     }
-    cycleShifts.forEach(s => { if (dailyCompliance[s.date]) { dailyCompliance[s.date].total += 1; dailyCompliance[s.date].sum += Number(s.scorePct || 0); } });
+    cycleShifts.forEach(s => { 
+        const sDateStr = String(s.date || s.Date || "").trim().split('T')[0];
+        if (dailyCompliance[sDateStr]) { 
+            dailyCompliance[sDateStr].total += 1; 
+            dailyCompliance[sDateStr].sum += Number(s.scorePct || s.ScorePct || 0); 
+        } 
+    });
 
     const employeeAverages = {};
     Store.employees.forEach(emp => {
-        const eId = emp.id || emp.ID;
-        const eShifts = cycleShifts.filter(s => String(s.empId).trim() === String(eId).trim());
+        const eId = String(emp.id || emp.ID || "").trim();
+        const eShifts = cycleShifts.filter(s => String(s.empId || s.EmpId || "").trim() === eId);
         if (eShifts.length > 0) {
-            const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || 0), 0);
-            employeeAverages[eId] = { name: emp.name || emp.Name, avg: Math.round(totalScore / eShifts.length), shiftsCount: eShifts.length };
+            const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || s.ScorePct || 0), 0);
+            employeeAverages[eId] = { name: emp.name || emp.Name || "Staff", avg: Math.round(totalScore / eShifts.length), shiftsCount: eShifts.length };
         }
     });
 
@@ -1450,9 +1469,18 @@ function renderGMDashboard() {
         if (tier !== 'None') { accountingRows.push(`<tr><td><strong>${data.name}</strong></td><td>${data.shiftsCount}</td><td>${data.avg}%</td><td><span style="font-weight:bold;color:#1e3a8a;">${tier}</span></td></tr>`); }
     });
 
-    const lookupDate = Store.selectedShiftDate;
-    const filteredShifts = Store.shifts.filter(s => String(s.date).trim() === String(lookupDate).trim());
-    const pendingProjects = Store.employees.filter(e => e.specialProject && e.specialProjectStatus === "Completed - Pending Sign-Off");
+    const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
+    const filteredShifts = Store.shifts.filter(s => {
+        const shiftDate = String(s.date || s.Date || "").trim().split('T')[0];
+        return shiftDate === lookupDate;
+    });
+
+    // Robust filter that catches any variation of completed status or whitespace
+    const pendingProjects = Store.employees.filter(e => {
+        const proj = String(e.specialProject || e.SpecialProject || "").trim();
+        const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
+        return proj !== "" && (status.includes("pending") || status.includes("completed"));
+    });
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -1525,7 +1553,7 @@ function renderGMDashboard() {
                     ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
                         <tr>
                             <td><strong>${e.name || e.Name}</strong></td>
-                            <td>${e.specialProject}</td>
+                            <td>${e.specialProject || e.SpecialProject}</td>
                             <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
                             <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
                         </tr>
@@ -1557,14 +1585,14 @@ function renderGMDashboard() {
                 <tbody>
                     ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => `
                         <tr>
-                            <td>${s.date}</td>
-                            <td><strong>${s.empName}</strong></td>
-                            <td>${String(s.role || '').toUpperCase()}</td>
-                            <td>${s.station || 'General'}</td>
-                            <td>${s.scorePct}%</td>
-                            <td>${Number(s.scorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
+                            <td>${s.date || s.Date}</td>
+                            <td><strong>${s.empName || s.EmpName}</strong></td>
+                            <td>${String(s.role || s.Role || '').toUpperCase()}</td>
+                            <td>${s.station || s.Station || 'General'}</td>
+                            <td>${s.scorePct || s.ScorePct}%</td>
+                            <td>${Number(s.scorePct || s.ScorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
                             <td>
-                                ${s.managerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id}')">Sign Off ✍️</button>`}
+                                ${s.managerSignOff || s.ManagerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id || s.ID}')">Sign Off ✍️</button>`}
                             </td>
                         </tr>
                     `).join('')}
@@ -1578,7 +1606,6 @@ function renderGMDashboard() {
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
 }
-
 function executeMasterReset() {
     if (Store.role !== 'gm') return;
     if (confirm("⚠️ WARNING: This will clear all local application data, shifts, messages, and reset system records. Are you sure you want to proceed?")) {
