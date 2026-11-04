@@ -690,10 +690,24 @@ function renderCookChecklistGated() {
 
 function completeSpecialProject() {
     if (!Store.user) return;
+    
+    // Mark as completed with exact status string required by manager dashboard filters
     Store.user.specialProjectStatus = "Completed - Pending Sign-Off";
-    ApiService.request('saveEmployee', { employee: Store.user }).then(() => {
-        alert("✅ Special project marked complete and submitted to management for sign-off!");
-        UIController.refreshActiveView();
+    
+    // Save the employee update to the Google Sheet backend
+    ApiService.request('saveEmployee', { employee: Store.user }).then(res => {
+        if (res && res.success) {
+            alert("✅ Special project marked complete and submitted to management for sign-off!");
+            
+            // Force an immediate global cloud reload so managers see it instantly across devices
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Project marked complete locally, but cloud sync encountered an issue.");
+            UIController.refreshActiveView();
+        }
+    }).catch(err => {
+        console.error("Error saving completed special project:", err);
+        alert("❌ Error connecting to cloud backend. Please check your network connection.");
     });
 }
 
@@ -791,13 +805,22 @@ function submitCookShiftChecklist() {
     cbs.forEach(cb => { if (cb.checked) checked++; });
     const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
     
+    // Helper for local date string if not already defined globally
+    const todayStr = (() => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    })();
+
     const shiftRecord = {
         id: `SHIFT-${Date.now()}`,
         empId: Store.user.id || Store.user.ID,
         empName: Store.user.name || Store.user.Name,
         role: Store.role,
         station: Store.assignedStation || Store.assignedChecklistKey || 'Cook Station',
-        date: new Date().toISOString().split('T')[0],
+        date: todayStr,
         tasksCompleted: checked,
         totalTasks: total,
         scorePct: pct,
@@ -806,21 +829,25 @@ function submitCookShiftChecklist() {
         managerSignOff: false
     };
 
-    Store.shifts.push(shiftRecord);
-
+    // Send to Google Sheets backend via API Service
     ApiService.request('saveShift', { shift: shiftRecord }).then(res => {
         alert(`🎉 Checklist submitted successfully! Score: ${pct}%. Sent to Manager Dashboard for review.`);
         Store.assignedStation = null;
         Store.assignedChecklistKey = null;
+
+        // Force an immediate global reload from the cloud backend so managers see it instantly
+        loadGlobalAppData();
 
         if (Store.role === 'cook') {
             switchTab('cook-dashboard', document.querySelector('.tab-btn'));
         } else {
             UIController.refreshActiveView();
         }
+    }).catch(err => {
+        console.error("Error submitting shift checklist:", err);
+        alert("❌ Failed to save checklist to the cloud. Please check your connection.");
     });
 }
-
 function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
@@ -984,14 +1011,51 @@ function managerSignOffShift(shiftId) {
     if (!shift) return;
     
     shift.managerSignOff = true;
-    shift.signedOffBy = Store.user.name;
+    shift.signedOffBy = Store.user ? Store.user.name : "Manager";
 
-    ApiService.request('saveShift', { shift }).then(() => {
-        alert("✅ Shift checklist signed off successfully!");
-        UIController.refreshActiveView();
+    ApiService.request('saveShift', { shift }).then(res => {
+        if (res && res.success) {
+            alert("✅ Shift checklist signed off successfully!");
+            
+            // Force an immediate global cloud reload so the manager badge updates instantly
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Failed to sync shift sign-off with cloud.");
+        }
+    }).catch(err => {
+        console.error("Error signing off shift:", err);
+        alert("❌ Network error connecting to backend.");
     });
 }
 
+function managerSignOffSpecialProject(empId) {
+    if (Store.role !== 'manager' && Store.role !== 'gm') return;
+    
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Employee record not found.");
+        return;
+    }
+    
+    // Mark the special project as signed off / completed
+    emp.specialProjectStatus = "Signed Off & Completed";
+    emp.signedOffBy = Store.user ? Store.user.name : "Manager";
+    
+    // Save updated employee record to the Google Sheet backend
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Special project for ${emp.name || emp.Name} has been signed off and cleared!`);
+            
+            // Force an immediate global cloud reload to sync the manager dashboard
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Failed to sync sign-off with the cloud backend.");
+        }
+    }).catch(err => {
+        console.error("Error signing off special project:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
 function renderMessageBoard() {
     const container = document.getElementById('message-board-container');
     if (!container) return;
