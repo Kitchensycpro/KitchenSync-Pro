@@ -1398,14 +1398,50 @@ function isCertifiedTeamLeader(empId) {
 
 function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
-    if (!container) return;
-    const myShifts = Store.shifts.filter(s => String(s.empId).trim() === String(Store.user.id).trim());
-    let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="5" style="text-align: center; color: #64748b;">${t('noShifts')}</td></tr>` :
-        myShifts.map(s => `<tr><td>${s.date}</td><td>${s.station || 'General'}</td><td>${s.tasksCompleted} / ${s.totalTasks}</td><td>${s.scorePct}%</td><td>${Number(s.scorePct) >= 85 ? t('goalMet') : t('missed')}</td></tr>`).join('');
+    if (!container || !Store.user) return;
+
+    const cookId = String(Store.user.id || Store.user.ID || "").trim();
+    const myShifts = Store.shifts.filter(s => {
+        const sEmpId = String(s.empId || s.EmpId || "").trim();
+        return sEmpId === cookId;
+    });
+
+    let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts')}</td></tr>` :
+        myShifts.map(s => {
+            const score = Number(s.scorePct || s.ScorePct || 0);
+            const isGoalMet = score >= 85;
+            const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
+
+            return `<tr>
+                <td>${s.date || s.Date || ''}</td>
+                <td>${s.station || s.Station || 'General'}</td>
+                <td>${s.tasksCompleted || s.TasksCompleted || 0} / ${s.totalTasks || s.TotalTasks || 0}</td>
+                <td><strong>${score}%</strong></td>
+                <td>${isGoalMet ? t('goalMet') : t('missed')}</td>
+                <td>${isSignedOff ? '<span style="color: #166534; font-weight: bold;">✅ Approved</span>' : '<span style="color: #b45309;">⏳ Pending Review</span>'}</td>
+            </tr>`;
+        }).join('');
 
     container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem;"><h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle')}</h3><p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub')}</p></div>
-        <div class="card"><table class="data-table" style="width: 100%;"><thead><tr><th>${t('tblDate')}</th><th>${t('tblStation')}</th><th>${t('tblCompletedTasks')}</th><th>${t('tblScore')}</th><th>${t('tblStatus')}</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle')}</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub')}</p>
+        </div>
+        <div class="card">
+            <table class="data-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>${t('tblDate')}</th>
+                        <th>${t('tblStation')}</th>
+                        <th>${t('tblCompletedTasks')}</th>
+                        <th>${t('tblScore')}</th>
+                        <th>${t('tblStatus')}</th>
+                        <th>Sign-Off</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>`;
 }
 
 function renderManagerDashboard() {
