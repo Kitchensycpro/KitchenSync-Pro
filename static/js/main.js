@@ -1448,7 +1448,13 @@ function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
     if (!container) return;
     
+    // CRITICAL FIX: Ensure Store.selectedShiftDate defaults to today if uninitialized
+    if (!Store.selectedShiftDate) {
+        Store.selectedShiftDate = new Date().toISOString().split('T')[0];
+    }
+    
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
+    
     const filteredShifts = Store.shifts.filter(s => {
         const shiftDate = String(s.date || s.Date || "").trim().split('T')[0];
         return shiftDate === lookupDate;
@@ -1531,11 +1537,11 @@ function renderManagerDashboard() {
             </table>
         </div>
         <div id="message-board-container"></div>`;
+        
     renderMessageBoard();
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
 }
-
 function handleShiftCalendarLookup(dateVal) {
     Store.selectedShiftDate = dateVal;
     renderManagerDashboard();
