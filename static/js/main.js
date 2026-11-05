@@ -798,6 +798,7 @@ function renderChecklists() {
     renderCookChecklistGated();
 }
 
+
 function submitCookShiftChecklist() {
     const cbs = document.querySelectorAll('.task-checkbox');
     const total = cbs.length;
@@ -805,7 +806,7 @@ function submitCookShiftChecklist() {
     cbs.forEach(cb => { if (cb.checked) checked++; });
     const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
     
-    // Helper for local date string if not already defined globally
+    // Helper for local date string
     const todayStr = (() => {
         const d = new Date();
         const year = d.getFullYear();
@@ -834,6 +835,9 @@ function submitCookShiftChecklist() {
         alert(`🎉 Checklist submitted successfully! Score: ${pct}%. Sent to Manager Dashboard for review.`);
         Store.assignedStation = null;
         Store.assignedChecklistKey = null;
+
+        // Automatically set the manager view date to today so the report is visible instantly
+        Store.selectedShiftDate = todayStr;
 
         // Force an immediate global reload from the cloud backend so managers see it instantly
         loadGlobalAppData();
