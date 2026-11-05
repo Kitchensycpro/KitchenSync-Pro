@@ -1472,9 +1472,10 @@ function renderManagerDashboard() {
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
+    // Robustly filter shifts handling any casing variations from Google Sheets
     const filteredShifts = Store.shifts.filter(s => {
-        const shiftDate = String(s.date || s.Date || "").trim().split('T')[0];
-        return shiftDate === lookupDate;
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
+        return rawDate === lookupDate;
     });
     
     // Robust filter that catches any variation of completed status or whitespace
@@ -1544,19 +1545,30 @@ function renderManagerDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => `
-                        <tr>
-                            <td>${s.date || s.Date}</td>
-                            <td><strong>${s.empName || s.EmpName}</strong></td>
-                            <td>${String(s.role || s.Role || '').toUpperCase()}</td>
-                            <td>${s.station || s.Station || 'General'}</td>
-                            <td>${s.scorePct || s.ScorePct}%</td>
-                            <td>${Number(s.scorePct || s.ScorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
-                            <td>
-                                ${s.managerSignOff || s.ManagerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id || s.ID}')">Sign Off ✍️</button>`}
-                            </td>
-                        </tr>
-                    `).join('')}
+                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => {
+                        const sDate = s.date || s.Date || s.DATE || '';
+                        const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
+                        const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
+                        const sStation = s.station || s.Station || s.STATION || 'General';
+                        const sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
+                        const isGoalMet = sScore >= 85;
+                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
+                        const sId = s.id || s.ID || '';
+
+                        return `
+                            <tr>
+                                <td>${sDate}</td>
+                                <td><strong>${sName}</strong></td>
+                                <td>${sRole}</td>
+                                <td>${sStation}</td>
+                                <td>${sScore}%</td>
+                                <td>${isGoalMet ? '✅ Goal Met' : '❌ Missed'}</td>
+                                <td>
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -1582,7 +1594,7 @@ function renderGMDashboard() {
     const startDate = new Date(CONFIG.PROGRAM_START_DATE);
     const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 13);
     const cycleShifts = Store.shifts.filter(s => { 
-        const sDateStr = String(s.date || s.Date || "").trim().split('T')[0];
+        const sDateStr = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
         const d = new Date(sDateStr); 
         return d >= startDate && d <= endDate; 
     });
@@ -1592,19 +1604,19 @@ function renderGMDashboard() {
         dailyCompliance[curr.toISOString().split('T')[0]] = { total: 0, sum: 0 };
     }
     cycleShifts.forEach(s => { 
-        const sDateStr = String(s.date || s.Date || "").trim().split('T')[0];
+        const sDateStr = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
         if (dailyCompliance[sDateStr]) { 
             dailyCompliance[sDateStr].total += 1; 
-            dailyCompliance[sDateStr].sum += Number(s.scorePct || s.ScorePct || 0); 
+            dailyCompliance[sDateStr].sum += Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0); 
         } 
     });
 
     const employeeAverages = {};
     Store.employees.forEach(emp => {
         const eId = String(emp.id || emp.ID || "").trim();
-        const eShifts = cycleShifts.filter(s => String(s.empId || s.EmpId || "").trim() === eId);
+        const eShifts = cycleShifts.filter(s => String(s.empId || s.EmpId || s.EMPID || "").trim() === eId);
         if (eShifts.length > 0) {
-            const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || s.ScorePct || 0), 0);
+            const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0), 0);
             employeeAverages[eId] = { name: emp.name || emp.Name || "Staff", avg: Math.round(totalScore / eShifts.length), shiftsCount: eShifts.length };
         }
     });
@@ -1621,7 +1633,7 @@ function renderGMDashboard() {
 
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     const filteredShifts = Store.shifts.filter(s => {
-        const shiftDate = String(s.date || s.Date || "").trim().split('T')[0];
+        const shiftDate = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
         return shiftDate === lookupDate;
     });
 
@@ -1740,19 +1752,30 @@ function renderGMDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => `
-                        <tr>
-                            <td>${s.date || s.Date}</td>
-                            <td><strong>${s.empName || s.EmpName}</strong></td>
-                            <td>${String(s.role || s.Role || '').toUpperCase()}</td>
-                            <td>${s.station || s.Station || 'General'}</td>
-                            <td>${s.scorePct || s.ScorePct}%</td>
-                            <td>${Number(s.scorePct || s.ScorePct) >= 85 ? '✅ Goal Met' : '❌ Missed'}</td>
-                            <td>
-                                ${s.managerSignOff || s.ManagerSignOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${s.id || s.ID}')">Sign Off ✍️</button>`}
-                            </td>
-                        </tr>
-                    `).join('')}
+                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => {
+                        const sDate = s.date || s.Date || s.DATE || '';
+                        const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
+                        const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
+                        const sStation = s.station || s.Station || s.STATION || 'General';
+                        const sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
+                        const isGoalMet = sScore >= 85;
+                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
+                        const sId = s.id || s.ID || '';
+
+                        return `
+                            <tr>
+                                <td>${sDate}</td>
+                                <td><strong>${sName}</strong></td>
+                                <td>${sRole}</td>
+                                <td>${sStation}</td>
+                                <td>${sScore}%</td>
+                                <td>${isGoalMet ? '✅ Goal Met' : '❌ Missed'}</td>
+                                <td>
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
