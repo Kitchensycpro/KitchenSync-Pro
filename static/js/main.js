@@ -1400,10 +1400,18 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
+    // Normalize both ID and Name to ensure reliable matching across payloads
     const cookId = String(Store.user.id || Store.user.ID || "").trim();
+    const cookName = String(Store.user.name || Store.user.Name || "").trim().toLowerCase();
+
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
-        return sEmpId === cookId;
+        const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
+        
+        const matchesId = cookId !== "" && sEmpId === cookId;
+        const matchesName = cookName !== "" && sEmpName === cookName;
+        
+        return matchesId || matchesName;
     });
 
     let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts')}</td></tr>` :
@@ -1443,7 +1451,6 @@ function renderCookDashboard() {
             </table>
         </div>`;
 }
-
 function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
     if (!container) return;
