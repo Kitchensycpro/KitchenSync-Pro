@@ -1056,31 +1056,41 @@ function managerSignOffShift(shiftId) {
 }
 
 function managerSignOffSpecialProject(empId) {
-    if (Store.role !== 'manager' && Store.role !== 'gm') return;
+    if (Store.role !== 'manager' && Store.role !== 'gm') {
+        alert("❌ Unauthorized: Manager or GM role required.");
+        return;
+    }
     
-    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    // Find employee using robust string-trimmed property lookup
+    const targetEmpId = String(empId || "").trim();
+    const emp = Store.employees.find(e => {
+        const currentId = String(e.id || e.ID || "").trim();
+        return currentId === targetEmpId;
+    });
+
     if (!emp) {
         alert("❌ Employee record not found.");
         return;
     }
     
-    // Mark the special project as signed off / completed
+    // Update the employee record's special project status and sign-off metadata
     emp.specialProjectStatus = "Signed Off & Completed";
-    emp.signedOffBy = Store.user ? Store.user.name : "Manager";
+    emp.signedOffBy = Store.user ? (Store.user.name || Store.user.Name) : "Manager";
     
-    // Save updated employee record to the Google Sheet backend
+    // Send updated employee record to the Google Sheets backend
     ApiService.request('saveEmployee', { employee: emp }).then(res => {
         if (res && res.success) {
-            alert(`✅ Special project for ${emp.name || emp.Name} has been signed off and cleared!`);
+            const empName = emp.name || emp.Name || "Employee";
+            alert(`✅ Special project for ${empName} has been signed off successfully!`);
             
-            // Force an immediate global cloud reload to sync the manager dashboard
+            // Force an immediate global cloud reload so dashboards update instantly
             loadGlobalAppData();
         } else {
-            alert("⚠️ Failed to sync sign-off with the cloud backend.");
+            alert("⚠️ Failed to sync special project sign-off with the cloud backend.");
         }
     }).catch(err => {
         console.error("Error signing off special project:", err);
-        alert("❌ Network error connecting to backend.");
+        alert("❌ Network error connecting to backend while signing off project.");
     });
 }
 function renderMessageBoard() {
@@ -1494,14 +1504,21 @@ function renderManagerDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
-                        <tr>
-                            <td><strong>${e.name || e.Name}</strong></td>
-                            <td>${e.specialProject || e.SpecialProject}</td>
-                            <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
-                            <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
-                        </tr>
-                    `).join('')}
+                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => {
+                        const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "");
+                        const isSignedOff = statusStr.toLowerCase().includes("signed off");
+
+                        return `
+                            <tr>
+                                <td><strong>${e.name || e.Name}</strong></td>
+                                <td>${e.specialProject || e.SpecialProject}</td>
+                                <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr || 'Pending Review'}</span></td>
+                                <td>
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
@@ -1683,14 +1700,21 @@ function renderGMDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => `
-                        <tr>
-                            <td><strong>${e.name || e.Name}</strong></td>
-                            <td>${e.specialProject || e.SpecialProject}</td>
-                            <td><span style="color: #c2410c; font-weight: bold;">Pending Review</span></td>
-                            <td><button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button></td>
-                        </tr>
-                    `).join('')}
+                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => {
+                        const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "");
+                        const isSignedOff = statusStr.toLowerCase().includes("signed off");
+
+                        return `
+                            <tr>
+                                <td><strong>${e.name || e.Name}</strong></td>
+                                <td>${e.specialProject || e.SpecialProject}</td>
+                                <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr || 'Pending Review'}</span></td>
+                                <td>
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>
