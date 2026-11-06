@@ -1583,10 +1583,10 @@ function handleShiftCalendarLookup(dateVal) {
     if (!dateVal) return;
     Store.selectedShiftDate = dateVal.trim().split('T')[0];
     
-    // Check current role and re-render the correct dashboard view
+    // Check active role and route to the correct dashboard renderer
     const currentRole = String(Store.role || (Store.user && Store.user.role) || "").trim().toLowerCase();
     
-    if (currentRole === 'gm' || currentRole === 'general manager' || document.getElementById('gm-dashboard-content')) {
+    if (currentRole === 'gm' || currentRole.includes('general')) {
         renderGMDashboard();
     } else {
         renderManagerDashboard();
