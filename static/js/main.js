@@ -1472,7 +1472,7 @@ function renderManagerDashboard() {
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robustly filter shifts handling trailing timestamps (like T05) and casing variations
+    // Robust date filter isolating YYYY-MM-DD (ignoring trailing T05 stamps)
     const filteredShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return false;
@@ -1530,7 +1530,7 @@ function renderManagerDashboard() {
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
-                    <input type="date" id="gm-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                    <input type="date" id="manager-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
                 </div>
             </div>
             <table class="data-table" style="width: 100%; margin-top: 1rem;">
