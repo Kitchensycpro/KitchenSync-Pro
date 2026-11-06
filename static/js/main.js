@@ -1472,10 +1472,11 @@ function renderManagerDashboard() {
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robustly filter shifts handling any casing variations from Google Sheets
+    // Robustly filter shifts handling trailing timestamps (like T05) and casing variations
     const filteredShifts = Store.shifts.filter(s => {
-        const rawDate = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
-        return rawDate === lookupDate;
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim();
+        if (!rawDate) return false;
+        return rawDate.substring(0, 10) === lookupDate;
     });
     
     // Robust filter that catches any variation of completed status or whitespace
@@ -1593,18 +1594,24 @@ function renderGMDashboard() {
     });
     const startDate = new Date(CONFIG.PROGRAM_START_DATE);
     const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 13);
+    
+    // Robust cycle shift filter ignoring trailing timestamps like T05
     const cycleShifts = Store.shifts.filter(s => { 
-        const sDateStr = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
-        const d = new Date(sDateStr); 
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim();
+        if (!rawDate) return false;
+        const d = new Date(rawDate.substring(0, 10)); 
         return d >= startDate && d <= endDate; 
     });
+    
     const dailyCompliance = {};
     for (let i = 0; i < 14; i++) {
         const curr = new Date(startDate); curr.setDate(curr.getDate() + i);
         dailyCompliance[curr.toISOString().split('T')[0]] = { total: 0, sum: 0 };
     }
     cycleShifts.forEach(s => { 
-        const sDateStr = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim();
+        if (!rawDate) return;
+        const sDateStr = rawDate.substring(0, 10);
         if (dailyCompliance[sDateStr]) { 
             dailyCompliance[sDateStr].total += 1; 
             dailyCompliance[sDateStr].sum += Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0); 
@@ -1632,9 +1639,12 @@ function renderGMDashboard() {
     });
 
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
+    
+    // Robust date filter isolating YYYY-MM-DD for the selected lookup date
     const filteredShifts = Store.shifts.filter(s => {
-        const shiftDate = String(s.date || s.Date || s.DATE || "").trim().split('T')[0];
-        return shiftDate === lookupDate;
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim();
+        if (!rawDate) return false;
+        return rawDate.substring(0, 10) === lookupDate;
     });
 
     // Robust filter that catches any variation of completed status or whitespace
