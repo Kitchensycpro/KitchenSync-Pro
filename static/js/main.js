@@ -803,7 +803,32 @@ function submitCookShiftChecklist() {
     const cbs = document.querySelectorAll('.task-checkbox');
     const total = cbs.length;
     let checked = 0;
-    cbs.forEach(cb => { if (cb.checked) checked++; });
+    
+    // Build the tasks array from the DOM checkboxes so the manager modal can audit line items
+    const tasksArray = [];
+    cbs.forEach(cb => {
+        const isChecked = cb.checked;
+        if (isChecked) checked++;
+        
+        // Find the label text associated with this checkbox
+        // (Adjust selector if your HTML structure stores task labels differently, e.g. cb.closest('label') or sibling text)
+        let labelText = "Task item";
+        const parentLabel = cb.closest('label');
+        const parentRow = cb.closest('.task-row') || cb.parentElement;
+        
+        if (parentLabel) {
+            labelText = parentLabel.innerText.trim();
+        } else if (parentRow) {
+            labelText = parentRow.innerText.trim();
+        }
+
+        tasksArray.push({
+            label: labelText,
+            completed: isChecked,
+            checked: isChecked
+        });
+    });
+
     const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
     
     // Helper for local date string
@@ -827,7 +852,8 @@ function submitCookShiftChecklist() {
         scorePct: pct,
         status: pct >= 85 ? "Completed" : "Needs Review",
         notes: pct >= 85 ? "Goal Met" : "Needs Improvement",
-        managerSignOff: false
+        managerSignOff: false,
+        tasks: tasksArray // 👈 CRITICAL: Attaches the full task line-items array for the manager audit modal!
     };
 
     // Send to Google Sheets backend via API Service
