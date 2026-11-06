@@ -1580,8 +1580,17 @@ function renderManagerDashboard() {
     renderSpecialProjectWidget();
 }
 function handleShiftCalendarLookup(dateVal) {
-    Store.selectedShiftDate = dateVal;
-    renderManagerDashboard();
+    if (!dateVal) return;
+    Store.selectedShiftDate = dateVal.trim().split('T')[0];
+    
+    // Check current role and re-render the correct dashboard view
+    const currentRole = String(Store.role || (Store.user && Store.user.role) || "").trim().toLowerCase();
+    
+    if (currentRole === 'gm' || currentRole === 'general manager' || document.getElementById('gm-dashboard-content')) {
+        renderGMDashboard();
+    } else {
+        renderManagerDashboard();
+    }
 }
 
 function renderGMDashboard() {
