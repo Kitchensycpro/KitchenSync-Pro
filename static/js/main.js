@@ -1815,25 +1815,56 @@ function openShiftChecklistModal(shiftId) {
     const modalBody = document.getElementById('shift-modal-body');
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
 
-    // Build the checklist preview and audit HTML
+    // Ensure tasks exist as an array on the shift object for editing
+    if (!shift.tasks && !shift.checklistItems && !shift.items) {
+        shift.tasks = []; // initialize if missing
+    }
+    const tasks = shift.tasks || shift.checklistItems || shift.items;
+
+    let tasksListHTML = "";
+    if (Array.isArray(tasks) && tasks.length > 0) {
+        tasksListHTML = tasks.map((t, idx) => {
+            const label = t.label || t.name || t.text || `Task ${idx + 1}`;
+            const isCompleted = t.completed === true || t.checked === true || String(t.status).toLowerCase() === 'completed';
+            
+            return `
+                <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                    <input type="checkbox" 
+                           style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" 
+                           ${isCompleted ? 'checked' : ''} 
+                           onchange="toggleShiftTaskAudit('${shift.id || shift.ID}', ${idx}, this.checked)">
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${label}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        tasksListHTML = `
+            <div style="padding: 15px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
+                <p style="margin: 0;">No individual line-item tasks were found attached to this summary record.</p>
+            </div>
+        `;
+    }
+
     modalBody.innerHTML = `
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Shift Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
+            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Interactive Shift Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
             <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Station: <strong>${shift.station || shift.Station || 'General'}</strong> | Date: ${shift.date || shift.Date}</p>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;">
-            <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong>${shift.scorePct || shift.ScorePct || 0}%</strong></div>
-            <div><span style="font-size: 0.8rem; color: #64748b;">Status:</span><br><strong>${shift.status || (Number(shift.scorePct || shift.ScorePct || 0) >= 85 ? 'Goal Met' : 'Needs Review')}</strong></div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;" id="modal-score-summary">
+            <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong id="modal-live-score">${shift.scorePct || shift.ScorePct || 0}%</strong></div>
+            <div><span style="font-size: 0.8rem; color: #64748b;">Status:</span><br><strong id="modal-live-status">${Number(shift.scorePct || shift.ScorePct || 0) >= 85 ? '✅ Goal Met' : '❌ Missed'}</strong></div>
         </div>
 
-        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Checklist Task Verification</h4>
-        <div style="background: #fdf8f6; border: 1px solid #fed7aa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #7c2d12;">
-            ℹ️ Role: <strong>${String(shift.role || shift.Role || 'General').toUpperCase()}</strong> | Recorded Score: <strong>${shift.scorePct || shift.ScorePct || 0}%</strong>
+        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Manager Audit Checklist (Click to check/uncheck)</h4>
+        <div style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; background: #ffffff;">
+            ${tasksListHTML}
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-            <button class="btn btn-secondary" onclick="closeShiftChecklistModal()">Close</button>
+            <button class="btn btn-secondary" onclick="closeShiftChecklistModal(); renderManagerDashboard(); renderGMDashboard();">Close & Refresh</button>
             ${isSignedOff ? 
                 '<span style="color: #166534; font-weight: bold; align-self: center;">✅ Already Signed Off</span>' : 
                 `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal();">Sign Off Shift ✍️</button>`
@@ -1842,6 +1873,32 @@ function openShiftChecklistModal(shiftId) {
     `;
 
     document.getElementById('shift-modal-overlay').style.display = 'flex';
+}
+
+function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) return;
+
+    const tasks = shift.tasks || shift.checklistItems || shift.items;
+    if (tasks && tasks[taskIndex]) {
+        tasks[taskIndex].completed = isChecked;
+        tasks[taskIndex].checked = isChecked;
+    }
+
+    if (Array.isArray(tasks) && tasks.length > 0) {
+        const completedCount = tasks.filter(t => t.completed || t.checked).length;
+        const newScore = Math.round((completedCount / tasks.length) * 100);
+        
+        shift.scorePct = newScore;
+        shift.ScorePct = newScore;
+        shift.tasksCompleted = completedCount;
+        shift.totalTasks = tasks.length;
+
+        const scoreEl = document.getElementById('modal-live-score');
+        const statusEl = document.getElementById('modal-live-status');
+        if (scoreEl) scoreEl.innerText = newScore + '%';
+        if (statusEl) statusEl.innerText = newScore >= 85 ? '✅ Goal Met' : '❌ Missed';
+    }
 }
 
 function closeShiftChecklistModal() {
