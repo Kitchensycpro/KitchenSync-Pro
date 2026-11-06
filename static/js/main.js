@@ -1489,7 +1489,7 @@ function renderManagerDashboard() {
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
         </div>
         <div id="manager-assignment-widget-container"></div>
         <div id="special-project-widget-container"></div>
@@ -1557,14 +1557,14 @@ function renderManagerDashboard() {
                         const sId = s.id || s.ID || '';
 
                         return `
-                            <tr>
+                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;" title="Click to view full checklist audit">
                                 <td>${sDate}</td>
                                 <td><strong>${sName}</strong></td>
                                 <td>${sRole}</td>
                                 <td>${sStation}</td>
                                 <td>${sScore}%</td>
                                 <td>${isGoalMet ? '✅ Goal Met' : '❌ Missed'}</td>
-                                <td>
+                                <td onclick="event.stopPropagation()">
                                     ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
                                 </td>
                             </tr>
@@ -1782,14 +1782,14 @@ function renderGMDashboard() {
                         const sId = s.id || s.ID || '';
 
                         return `
-                            <tr>
+                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;" title="Click to view full checklist audit">
                                 <td>${sDate}</td>
                                 <td><strong>${sName}</strong></td>
                                 <td>${sRole}</td>
                                 <td>${sStation}</td>
                                 <td>${sScore}%</td>
                                 <td>${isGoalMet ? '✅ Goal Met' : '❌ Missed'}</td>
-                                <td>
+                                <td onclick="event.stopPropagation()">
                                     ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
                                 </td>
                             </tr>
@@ -1804,6 +1804,48 @@ function renderGMDashboard() {
         </div>`;
     renderManagerAssignmentWidget();
     renderSpecialProjectWidget();
+}
+function openShiftChecklistModal(shiftId) {
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) {
+        alert("Shift record details not found.");
+        return;
+    }
+
+    const modalBody = document.getElementById('shift-modal-body');
+    const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
+
+    // Build the checklist preview and audit HTML
+    modalBody.innerHTML = `
+        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Shift Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Station: <strong>${shift.station || shift.Station || 'General'}</strong> | Date: ${shift.date || shift.Date}</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;">
+            <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong>${shift.scorePct || shift.ScorePct || 0}%</strong></div>
+            <div><span style="font-size: 0.8rem; color: #64748b;">Status:</span><br><strong>${shift.status || (Number(shift.scorePct || shift.ScorePct || 0) >= 85 ? 'Goal Met' : 'Needs Review')}</strong></div>
+        </div>
+
+        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Checklist Task Verification</h4>
+        <div style="background: #fdf8f6; border: 1px solid #fed7aa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #7c2d12;">
+            ℹ️ Role: <strong>${String(shift.role || shift.Role || 'General').toUpperCase()}</strong> | Recorded Score: <strong>${shift.scorePct || shift.ScorePct || 0}%</strong>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <button class="btn btn-secondary" onclick="closeShiftChecklistModal()">Close</button>
+            ${isSignedOff ? 
+                '<span style="color: #166534; font-weight: bold; align-self: center;">✅ Already Signed Off</span>' : 
+                `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal();">Sign Off Shift ✍️</button>`
+            }
+        </div>
+    `;
+
+    document.getElementById('shift-modal-overlay').style.display = 'flex';
+}
+
+function closeShiftChecklistModal() {
+    document.getElementById('shift-modal-overlay').style.display = 'none';
 }
 function executeMasterReset() {
     if (Store.role !== 'gm') return;
