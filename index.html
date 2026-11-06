@@ -217,23 +217,23 @@
             margin-bottom: 1.25rem;
         }
         @media print {
-    body * {
-        visibility: hidden;
-    }
-    #checklist-container, #checklist-container *, 
-    #bonus-accounting-card, #bonus-accounting-card * {
-        visibility: visible;
-    }
-    #checklist-container, #bonus-accounting-card {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
-    .btn, nav, header, footer {
-        display: none !important;
-    }
-}
+            body * {
+                visibility: hidden;
+            }
+            #checklist-container, #checklist-container *, 
+            #bonus-accounting-card, #bonus-accounting-card * {
+                visibility: visible;
+            }
+            #checklist-container, #bonus-accounting-card {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .btn, nav, header, footer {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -337,6 +337,16 @@
             <div style="display: flex; justify-content: flex-end; gap: 10px;">
                 <button class="btn btn-secondary" onclick="closeQuizModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="submitQuizAnswers()">Submit Quiz Answers ✍️</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHIFT CHECKLIST AUDIT POP-UP MODAL CONTAINER -->
+    <div id="shift-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="card" style="background: #ffffff; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <button onclick="closeShiftChecklistModal()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;">✕</button>
+            <div id="shift-modal-body">
+                <!-- Dynamic checklist audit details loaded here -->
             </div>
         </div>
     </div>
