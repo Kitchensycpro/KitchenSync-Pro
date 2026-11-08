@@ -626,68 +626,51 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    const container = document.getElementById('checklist-container');
-    if (!container) return;
-    container.innerHTML = '';
+    const container = document.getElementById('checklist-container') || document.getElementById('cook-dashboard-content');
+    if (!container || !Store.user) return;
 
-    if (Store.user && Store.user.specialProject) {
-        const isCompleted = Store.user.specialProjectStatus === "Completed - Pending Sign-Off";
-        const projBanner = document.createElement('div');
-        projBanner.className = 'card';
-        projBanner.style.cssText = 'margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;';
-        projBanner.innerHTML = `
-            <h4 style="color: #1e40af; margin-top: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
-            <p style="font-size: 0.95rem; color: #1e3a8a; font-weight: 600; margin: 4px 0 10px 0;">${Store.user.specialProject}</p>
-            ${isCompleted ? 
-                `<span style="color: #166534; font-weight: bold; font-size: 0.85rem;">✅ Submitted - Awaiting Manager Sign-Off</span>` :
-                `<button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="completeSpecialProject()">Mark Task Complete & Submit 💾</button>`
-            }
-        `;
-        container.appendChild(projBanner);
-    }
+    // Retrieve active station tasks assigned to the cook
+    const tasks = Store.assignedStationTasks || Store.currentChecklistTasks || [];
 
-    if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
-        Store.assignedChecklistKey = Store.user.station;
-        Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
-    }
-
-    if (!Store.assignedStation || !Store.assignedChecklistKey) {
-        container.innerHTML += `
-            <div class="card" style="background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;">
-                <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Cook's Dashboard - Station Access Pending</h3>
-                <p style="color: #92400e; font-size: 0.95rem;">No checklist or station has been assigned to you yet by a Manager or Shift Manager.</p>
-                <p style="color: #78350f; font-size: 0.85rem;">Please contact your shift supervisor to assign your active opening or closing station.</p>
+    let tasksHtml = "";
+    if (Array.isArray(tasks) && tasks.length > 0) {
+        tasksHtml = tasks.map((t, idx) => {
+            const label = t.label || t.name || t.text || `Task ${idx + 1}`;
+            return `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
+                    <span style="font-size: 1.1rem; color: #64748b;">📄</span>
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">${label}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        tasksHtml = `
+            <div style="padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
+                <p style="margin: 0;">No active station tasks currently assigned. Please check with your manager.</p>
             </div>
         `;
-        return;
     }
 
-    const assignedKey = Store.assignedChecklistKey;
-    const assignedTitle = Store.assignedStation;
-    const specObj = CHECKLIST_SPECS[assignedKey] || CHECKLIST_SPECS['range_open'];
-    const itemsList = specObj.items[Store.lang] || specObj.items['en'];
-    const checklistTitle = specObj.title[Store.lang] || specObj.title['en'];
-
-    const banner = document.createElement('div');
-    banner.className = 'card';
-    banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
-    banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${assignedTitle} (${checklistTitle})</h3><p style="margin:4px 0 0 0;font-size:0.85rem;color:#15803d;">${t('assignedStationSub')}</p>`;
-    container.appendChild(banner);
-
-    let html = `<div class="card checklist-section"><h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📋 15-Item Station Tasks</h3>`;
-    itemsList.forEach((taskText, idx) => {
-        html += `<div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;"><input type="checkbox" class="task-checkbox" id="cb-cook-${idx}" style="width:20px;height:20px;cursor:pointer;"><div><div class="task-title" style="font-weight:600; color:#334155;">${idx + 1}. ${taskText}</div></div></div>`;
-    });
-    html += `</div>`;
-    container.innerHTML += html;
-
-    container.innerHTML += `
-        <div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button>
-            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
-        </div>`;
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+                <h3 style="color: #1e3a8a; margin: 0;">Station Checklist & Prep Task List (Read-Only)</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" onclick="toggleLanguage()">🌐 Translate</button>
+                    <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Checklist</button>
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Review your station tasks below. All audits, score check-offs, and final sign-offs are conducted by management during the Shift Audit.</p>
+        </div>
+        <div class="card">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; max-height: 450px; overflow-y: auto;">
+                ${tasksHtml}
+            </div>
+        </div>
+    `;
 }
-
 function completeSpecialProject() {
     if (!Store.user) return;
     
@@ -1058,13 +1041,40 @@ function submitManagerShiftChecklist() {
 function managerSignOffShift(shiftId) {
     const shift = Store.shifts.find(s => String(s.id).trim() === String(shiftId).trim());
     if (!shift) return;
+
+    // Safely parse tasks from memory or notes string
+    let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
+    if (typeof tasks === 'string') {
+        try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
+    }
+
+    // Calculate final scores using the 10-points-per-task rule
+    if (Array.isArray(tasks) && tasks.length > 0) {
+        const totalTasks = tasks.length;
+        const completedCount = tasks.filter(t => t.completed || t.checked).length;
+        
+        const totalPointsPossible = totalTasks * 10;
+        const pointsEarned = completedCount * 10;
+        const finalScore = Math.round((completedCount / totalTasks) * 100);
+        
+        shift.scorePct = finalScore;
+        shift.ScorePct = finalScore;
+        shift.tasksCompleted = completedCount;
+        shift.totalTasks = totalTasks;
+        shift.pointsEarned = pointsEarned;
+        shift.totalPointsPossible = totalPointsPossible;
+        shift.status = finalScore >= 85 ? "Completed" : "Needs Review";
+        shift.notes = JSON.stringify(tasks);
+    }
     
+    // Official sign-off properties
     shift.managerSignOff = true;
+    shift.ManagerSignOff = true;
     shift.signedOffBy = Store.user ? Store.user.name : "Manager";
 
     ApiService.request('saveShift', { shift }).then(res => {
         if (res && res.success) {
-            alert("✅ Shift checklist signed off successfully!");
+            alert("✅ Shift checklist audited, scored (10 pts/task), and signed off successfully!");
             
             // Force an immediate global cloud reload so the manager badge updates instantly
             loadGlobalAppData();
@@ -1443,39 +1453,47 @@ function renderCookDashboard() {
         const matchesId = cookId !== "" && sEmpId === cookId;
         const matchesName = cookName !== "" && sEmpName === cookName;
         
-        return matchesId || matchesName;
+        // ONLY show shifts in the performance log that have been signed off by management
+        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
+
+        return (matchesId || matchesName) && isSignedOff;
     });
 
-    let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts')}</td></tr>` :
+    let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts') || 'No completed & signed-off shift records found.'}</td></tr>` :
         myShifts.map(s => {
             const score = Number(s.scorePct || s.ScorePct || 0);
             const isGoalMet = score >= 85;
-            const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
+            const completedTasks = Number(s.tasksCompleted || s.TasksCompleted || 0);
+            const totalTasks = Number(s.totalTasks || s.TotalTasks || 0);
+            
+            // 10 points per task calculation display (fallback if not explicitly pre-calculated)
+            const pointsEarned = Number(s.pointsEarned || (completedTasks * 10));
+            const totalPointsPossible = Number(s.totalPointsPossible || (totalTasks * 10));
 
             return `<tr>
                 <td>${s.date || s.Date || ''}</td>
                 <td>${s.station || s.Station || 'General'}</td>
-                <td>${s.tasksCompleted || s.TasksCompleted || 0} / ${s.totalTasks || s.TotalTasks || 0}</td>
+                <td>${completedTasks} / ${totalTasks} (${pointsEarned}/${totalPointsPossible} pts)</td>
                 <td><strong>${score}%</strong></td>
-                <td>${isGoalMet ? t('goalMet') : t('missed')}</td>
-                <td>${isSignedOff ? '<span style="color: #166534; font-weight: bold;">✅ Approved</span>' : '<span style="color: #b45309;">⏳ Pending Review</span>'}</td>
+                <td>${isGoalMet ? (t('goalMet') || '✅ Goal Met') : (t('missed') || '❌ Missed')}</td>
+                <td><span style="color: #166534; font-weight: bold;">✅ Approved & Logged</span></td>
             </tr>`;
         }).join('');
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
-            <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle')}</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub')}</p>
+            <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Cook Dashboard & Performance Log'}</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub') || 'View your officially audited and manager-approved shift records below.'}</p>
         </div>
         <div class="card">
             <table class="data-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th>${t('tblDate')}</th>
-                        <th>${t('tblStation')}</th>
-                        <th>${t('tblCompletedTasks')}</th>
-                        <th>${t('tblScore')}</th>
-                        <th>${t('tblStatus')}</th>
+                        <th>${t('tblDate') || 'Date'}</th>
+                        <th>${t('tblStation') || 'Station'}</th>
+                        <th>${t('tblCompletedTasks') || 'Completed Tasks (Pts)'}</th>
+                        <th>${t('tblScore') || 'Score'}</th>
+                        <th>${t('tblStatus') || 'Status'}</th>
                         <th>Sign-Off</th>
                     </tr>
                 </thead>
@@ -1942,20 +1960,29 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         tasks[taskIndex].completed = isChecked;
         tasks[taskIndex].checked = isChecked;
         shift.tasks = tasks; // update reference
+        // Also sync notes if your storage relies on JSON stringified notes
+        shift.notes = JSON.stringify(tasks);
     }
 
     if (Array.isArray(tasks) && tasks.length > 0) {
         const completedCount = tasks.filter(t => t.completed || t.checked).length;
-        const newScore = Math.round((completedCount / tasks.length) * 100);
+        const totalTasks = tasks.length;
+        
+        // 10 points per task calculation
+        const totalPointsPossible = totalTasks * 10;
+        const pointsEarned = completedCount * 10;
+        const newScore = Math.round((completedCount / totalTasks) * 100);
         
         shift.scorePct = newScore;
         shift.ScorePct = newScore;
         shift.tasksCompleted = completedCount;
-        shift.totalTasks = tasks.length;
+        shift.totalTasks = totalTasks;
+        shift.pointsEarned = pointsEarned;
+        shift.totalPointsPossible = totalPointsPossible;
 
         const scoreEl = document.getElementById('modal-live-score');
         const statusEl = document.getElementById('modal-live-status');
-        if (scoreEl) scoreEl.innerText = newScore + '%';
+        if (scoreEl) scoreEl.innerText = `${newScore}% (${pointsEarned}/${totalPointsPossible} pts)`;
         if (statusEl) statusEl.innerText = newScore >= 85 ? '✅ Goal Met' : '❌ Missed';
     }
 }
