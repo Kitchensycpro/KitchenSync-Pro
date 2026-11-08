@@ -1017,6 +1017,8 @@ function assignSpecialProject() {
 }
 function assignCooksGroup(selectIds) {
     let assignedCount = 0;
+    const todayStr = new Date().toISOString().split('T')[0];
+
     selectIds.forEach(id => {
         const selectEl = document.getElementById(id);
         if (!selectEl || !selectEl.value) return;
@@ -1026,7 +1028,41 @@ function assignCooksGroup(selectIds) {
         
         if (emp) {
             emp.station = stationKey;
+            emp.Station = stationKey;
+            
+            // 1. Save employee station update
             ApiService.request('saveEmployee', { employee: emp });
+
+            // 2. Automatically generate the pending shift record for manager audit in Google Sheets
+            // Pull the exact task list items from CHECKLIST_SPECS for this station so the manager has them to audit
+            const stationSpec = CHECKLIST_SPECS[stationKey];
+            const taskItemsText = (stationSpec && stationSpec.items && stationSpec.items['en']) ? stationSpec.items['en'] : [];
+            const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
+
+            const initialShift = {
+                id: `SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                empId: emp.id || emp.ID,
+                empName: emp.name || emp.Name,
+                role: emp.role || 'cook',
+                station: stationKey.replace(/_/g, ' ').toUpperCase(),
+                date: todayStr,
+                tasksCompleted: 0,
+                totalTasks: serializedTasks.length || 15,
+                scorePct: 0,
+                status: "Pending Review",
+                notes: JSON.stringify(serializedTasks),
+                managerSignOff: false,
+                tasks: serializedTasks,
+                // GAS Aliases
+                EmpId: emp.id || emp.ID,
+                EmpName: emp.name || emp.Name,
+                ScorePct: 0,
+                TotalTasks: serializedTasks.length || 15,
+                TasksCompleted: 0
+            };
+            
+            Store.shifts.push(initialShift);
+            ApiService.request('saveShift', { shift: initialShift });
             
             if (Store.user && String(Store.user.id).trim() === String(emp.id).trim()) {
                 Store.assignedChecklistKey = stationKey;
@@ -1037,10 +1073,11 @@ function assignCooksGroup(selectIds) {
     });
     
     if (assignedCount > 0) {
-        alert(`✅ Successfully assigned ${assignedCount} cook(s) with active checklists!`);
+        alert(`✅ Successfully assigned ${assignedCount} cook(s)! Shift audit records have been posted to Google Sheets.`);
         if (typeof renderManagerAssignmentWidget === 'function') {
             renderManagerAssignmentWidget();
         }
+        loadGlobalAppData();
     } else {
         alert("Please select at least one cook.");
     }
