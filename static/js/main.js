@@ -804,14 +804,12 @@ function submitCookShiftChecklist() {
     const total = cbs.length;
     let checked = 0;
     
-    // Build the tasks array from the DOM checkboxes so the manager modal can audit line items
+    // Build the tasks array from the DOM checkboxes
     const tasksArray = [];
     cbs.forEach(cb => {
         const isChecked = cb.checked;
         if (isChecked) checked++;
         
-        // Find the label text associated with this checkbox
-        // (Adjust selector if your HTML structure stores task labels differently, e.g. cb.closest('label') or sibling text)
         let labelText = "Task item";
         const parentLabel = cb.closest('label');
         const parentRow = cb.closest('.task-row') || cb.parentElement;
@@ -851,9 +849,10 @@ function submitCookShiftChecklist() {
         totalTasks: total,
         scorePct: pct,
         status: pct >= 85 ? "Completed" : "Needs Review",
-        notes: pct >= 85 ? "Goal Met" : "Needs Improvement",
+        // Store tasks serialized as a JSON string in notes so Google Sheets preserves them!
+        notes: JSON.stringify(tasksArray),
         managerSignOff: false,
-        tasks: tasksArray // 👈 CRITICAL: Attaches the full task line-items array for the manager audit modal!
+        tasks: tasksArray // kept in memory for immediate use
     };
 
     // Send to Google Sheets backend via API Service
@@ -862,10 +861,7 @@ function submitCookShiftChecklist() {
         Store.assignedStation = null;
         Store.assignedChecklistKey = null;
 
-        // Automatically set the manager view date to today so the report is visible instantly
         Store.selectedShiftDate = todayStr;
-
-        // Force an immediate global reload from the cloud backend so managers see it instantly
         loadGlobalAppData();
 
         if (Store.role === 'cook') {
@@ -1841,14 +1837,20 @@ function openShiftChecklistModal(shiftId) {
     const modalBody = document.getElementById('shift-modal-body');
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
 
-    // ROBUST PARSER: Handle cases where tasks are stored as a JSON string from Google Sheets
+    // Find the employee object associated with this shift to retrieve special project data
+    const employee = Store.employees.find(e => String(e.id || e.ID) === String(shift.empId || shift.EmpId || shift.EMPID));
+    const specialProjectName = employee ? (employee.specialProject || employee.SpecialProject || "") : "";
+    const specialProjectStatus = employee ? (employee.specialProjectStatus || employee.SpecialProjectStatus || "None Assigned") : "None Assigned";
+    const empId = employee ? (employee.id || employee.ID) : "";
+
+    // ROBUST TASK PARSER: Check shift.tasks, or parse JSON from shift.notes saved in Sheets
     let rawTasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
-    if (typeof rawTasks === 'string') {
+    
+    if (!rawTasks && shift.notes && typeof shift.notes === 'string' && shift.notes.startsWith('[')) {
         try {
-            rawTasks = JSON.parse(rawTasks);
+            rawTasks = JSON.parse(shift.notes);
         } catch (e) {
-            console.warn("Could not parse shift.tasks string:", e);
-            rawTasks = [];
+            console.warn("Could not parse tasks JSON from shift.notes:", e);
         }
     }
 
@@ -1880,9 +1882,27 @@ function openShiftChecklistModal(shiftId) {
         `;
     }
 
+    let specialProjectHTML = "";
+    if (specialProjectName) {
+        const isProjectSignedOff = specialProjectStatus.toLowerCase().includes("signed off");
+        specialProjectHTML = `
+            <div style="background: #fdf8f6; border: 1px solid #fed7aa; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                <h4 style="color: #c2410c; margin: 0 0 5px 0; font-size: 0.95rem;">🛠️ Assigned Special Project</h4>
+                <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #1e293b;"><strong>Task:</strong> ${specialProjectName}</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                    <span>Status: <strong style="color: ${isProjectSignedOff ? '#166534' : '#c2410c'};">${specialProjectStatus}</strong></span>
+                    ${isProjectSignedOff ? 
+                        '<span style="color: #166534; font-weight: bold;">✅ Project Signed Off</span>' : 
+                        `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${empId}'); openShiftChecklistModal('${shift.id || shift.ID}');">Sign Off Project ✍️</button>`
+                    }
+                </div>
+            </div>
+        `;
+    }
+
     modalBody.innerHTML = `
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Interactive Shift Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
+            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Interactive Shift & Project Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
             <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Station: <strong>${shift.station || shift.Station || 'General'}</strong> | Date: ${shift.date || shift.Date}</p>
         </div>
 
@@ -1891,8 +1911,10 @@ function openShiftChecklistModal(shiftId) {
             <div><span style="font-size: 0.8rem; color: #64748b;">Status:</span><br><strong id="modal-live-status">${Number(shift.scorePct || shift.ScorePct || 0) >= 85 ? '✅ Goal Met' : '❌ Missed'}</strong></div>
         </div>
 
+        ${specialProjectHTML}
+
         <h4 style="color: #1e3a8a; margin-bottom: 8px;">Manager Audit Checklist (Click to check/uncheck)</h4>
-        <div style="max-height: 280px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; background: #ffffff;">
+        <div style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; background: #ffffff;">
             ${tasksListHTML}
         </div>
 
@@ -1907,7 +1929,6 @@ function openShiftChecklistModal(shiftId) {
 
     document.getElementById('shift-modal-overlay').style.display = 'flex';
 }
-
 function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
     if (!shift) return;
