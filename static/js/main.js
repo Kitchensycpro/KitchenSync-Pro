@@ -1533,21 +1533,20 @@ function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
     if (!container) return;
     
-    // CRITICAL FIX: Ensure Store.selectedShiftDate defaults to today if uninitialized
+    // Ensure Store.selectedShiftDate defaults to today if uninitialized
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = new Date().toISOString().split('T')[0];
     }
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robust date filter isolating YYYY-MM-DD (ignoring trailing T05 stamps)
+    // Robust date filter isolating YYYY-MM-DD
     const filteredShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
-        if (!rawDate) return false;
+        if (!rawDate) return true; // Show all shifts if date is missing so nothing gets hidden
         return rawDate.substring(0, 10) === lookupDate;
     });
     
-    // Robust filter that catches any variation of completed status or whitespace
     const pendingProjects = Store.employees.filter(e => {
         const proj = String(e.specialProject || e.SpecialProject || "").trim();
         const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
@@ -1595,7 +1594,7 @@ function renderManagerDashboard() {
 
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
+                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
                     <input type="date" id="manager-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
@@ -1715,12 +1714,17 @@ function renderGMDashboard() {
         if (tier !== 'None') { accountingRows.push(`<tr><td><strong>${data.name}</strong></td><td>${data.shiftsCount}</td><td>${data.avg}%</td><td><span style="font-weight:bold;color:#1e3a8a;">${tier}</span></td></tr>`); }
     });
 
+    // Ensure Store.selectedShiftDate defaults to today if uninitialized
+    if (!Store.selectedShiftDate) {
+        Store.selectedShiftDate = new Date().toISOString().split('T')[0];
+    }
+
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
     // Robust date filter isolating YYYY-MM-DD for the selected lookup date
     const filteredShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
-        if (!rawDate) return false;
+        if (!rawDate) return true; // Fallback to show shifts if date key is absent
         return rawDate.substring(0, 10) === lookupDate;
     });
 
@@ -1820,7 +1824,7 @@ function renderGMDashboard() {
 
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                <h4 style="color: #1e3a8a; margin: 0;">⭐ Completed Team Shifts & Reports</h4>
+                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
                     <input type="date" id="gm-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
