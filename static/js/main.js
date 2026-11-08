@@ -1070,19 +1070,18 @@ function managerSignOffShift(shiftId) {
     const shift = Store.shifts.find(s => String(s.id).trim() === String(shiftId).trim());
     if (!shift) return;
 
-    // Safely parse tasks from memory or notes string
     let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
     if (typeof tasks === 'string') {
         try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
     }
 
-    // Calculate final scores using the 10-points-per-task rule
     if (Array.isArray(tasks) && tasks.length > 0) {
         const totalTasks = tasks.length;
         const completedCount = tasks.filter(t => t.completed || t.checked).length;
         
         const totalPointsPossible = totalTasks * 10;
         const pointsEarned = completedCount * 10;
+        // Ensure rounding to nearest whole number
         const finalScore = Math.round((completedCount / totalTasks) * 100);
         
         shift.scorePct = finalScore;
@@ -1095,16 +1094,13 @@ function managerSignOffShift(shiftId) {
         shift.notes = JSON.stringify(tasks);
     }
     
-    // Official sign-off properties
     shift.managerSignOff = true;
     shift.ManagerSignOff = true;
     shift.signedOffBy = Store.user ? Store.user.name : "Manager";
 
     ApiService.request('saveShift', { shift }).then(res => {
         if (res && res.success) {
-            alert("✅ Shift checklist audited, scored (10 pts/task), and signed off successfully!");
-            
-            // Force an immediate global cloud reload so the manager badge updates instantly
+            alert("✅ Shift checklist audited, scored with 10 pts/task, and signed off successfully!");
             loadGlobalAppData();
         } else {
             alert("⚠️ Failed to sync shift sign-off with cloud.");
@@ -1114,7 +1110,6 @@ function managerSignOffShift(shiftId) {
         alert("❌ Network error connecting to backend.");
     });
 }
-
 function managerSignOffSpecialProject(empId) {
     if (Store.role !== 'manager' && Store.role !== 'gm') {
         alert("❌ Unauthorized: Manager or GM role required.");
@@ -2010,8 +2005,7 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
     if (Array.isArray(tasks) && tasks[taskIndex]) {
         tasks[taskIndex].completed = isChecked;
         tasks[taskIndex].checked = isChecked;
-        shift.tasks = tasks; // update reference
-        // Also sync notes if your storage relies on JSON stringified notes
+        shift.tasks = tasks; 
         shift.notes = JSON.stringify(tasks);
     }
 
@@ -2019,9 +2013,9 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         const completedCount = tasks.filter(t => t.completed || t.checked).length;
         const totalTasks = tasks.length;
         
-        // 10 points per task calculation
         const totalPointsPossible = totalTasks * 10;
         const pointsEarned = completedCount * 10;
+        // Rounded to the nearest whole number as requested (e.g. 93%)
         const newScore = Math.round((completedCount / totalTasks) * 100);
         
         shift.scorePct = newScore;
@@ -2030,6 +2024,7 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         shift.totalTasks = totalTasks;
         shift.pointsEarned = pointsEarned;
         shift.totalPointsPossible = totalPointsPossible;
+        shift.status = newScore >= 85 ? "Completed" : "Needs Review";
 
         const scoreEl = document.getElementById('modal-live-score');
         const statusEl = document.getElementById('modal-live-status');
@@ -2037,7 +2032,6 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         if (statusEl) statusEl.innerText = newScore >= 85 ? '✅ Goal Met' : '❌ Missed';
     }
 }
-
 function closeShiftChecklistModal() {
     document.getElementById('shift-modal-overlay').style.display = 'none';
 }
