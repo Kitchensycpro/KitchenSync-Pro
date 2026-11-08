@@ -1841,14 +1841,21 @@ function openShiftChecklistModal(shiftId) {
     const modalBody = document.getElementById('shift-modal-body');
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
 
-    // Ensure tasks exist as an array on the shift object for editing
-    if (!shift.tasks && !shift.checklistItems && !shift.items) {
-        shift.tasks = []; // initialize if missing
+    // ROBUST PARSER: Handle cases where tasks are stored as a JSON string from Google Sheets
+    let rawTasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
+    if (typeof rawTasks === 'string') {
+        try {
+            rawTasks = JSON.parse(rawTasks);
+        } catch (e) {
+            console.warn("Could not parse shift.tasks string:", e);
+            rawTasks = [];
+        }
     }
-    const tasks = shift.tasks || shift.checklistItems || shift.items;
+
+    const tasks = Array.isArray(rawTasks) ? rawTasks : [];
 
     let tasksListHTML = "";
-    if (Array.isArray(tasks) && tasks.length > 0) {
+    if (tasks.length > 0) {
         tasksListHTML = tasks.map((t, idx) => {
             const label = t.label || t.name || t.text || `Task ${idx + 1}`;
             const isCompleted = t.completed === true || t.checked === true || String(t.status).toLowerCase() === 'completed';
@@ -1905,10 +1912,15 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
     if (!shift) return;
 
-    const tasks = shift.tasks || shift.checklistItems || shift.items;
-    if (tasks && tasks[taskIndex]) {
+    let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
+    if (typeof tasks === 'string') {
+        try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
+    }
+
+    if (Array.isArray(tasks) && tasks[taskIndex]) {
         tasks[taskIndex].completed = isChecked;
         tasks[taskIndex].checked = isChecked;
+        shift.tasks = tasks; // update reference
     }
 
     if (Array.isArray(tasks) && tasks.length > 0) {
