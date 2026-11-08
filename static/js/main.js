@@ -626,7 +626,7 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    // Check multiple potential container IDs used across different dashboards
+    // 1. Locate the container across potential DOM IDs
     const container = document.getElementById('checklist-container') || 
                       document.getElementById('cook-dashboard-content') || 
                       document.getElementById('cook-checklist-view');
@@ -638,23 +638,22 @@ function renderCookChecklistGated() {
 
     if (!Store.user) return;
 
-    // Fallback search across all possible task storage arrays in Store
-    let tasks = Store.assignedStationTasks || 
-                Store.currentChecklistTasks || 
-                Store.activeChecklist || 
-                Store.stationTasks;
-
-    // If tasks is still empty, check if it's stored inside an active station object
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-        const stationKey = Store.assignedStation || Store.assignedChecklistKey;
-        if (stationKey && Store.checklists && Store.checklists[stationKey]) {
-            tasks = Store.checklists[stationKey];
-        } else if (Store.stations && Array.isArray(Store.stations)) {
-            const currentStation = Store.stations.find(s => s.name === stationKey || s.id === stationKey);
-            if (currentStation && currentStation.tasks) {
-                tasks = currentStation.tasks;
-            }
+    // 2. Resolve the assigned station key (e.g. 'grill', 'prep', etc.)
+    const stationKey = Store.assignedStation || Store.assignedChecklistKey;
+    
+    // 3. Pull tasks from Store.checklists using the station key, or fallbacks
+    let tasks = [];
+    if (stationKey && Store.checklists) {
+        // Look up by exact key or lowercase match
+        const foundKey = Object.keys(Store.checklists).find(k => k.toLowerCase() === String(stationKey).toLowerCase());
+        if (foundKey) {
+            tasks = Store.checklists[foundKey];
         }
+    }
+
+    // Fallbacks if not found in Store.checklists
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+        tasks = Store.assignedStationTasks || Store.currentChecklistTasks || Store.activeChecklist || [];
     }
 
     let tasksHtml = "";
@@ -673,7 +672,7 @@ function renderCookChecklistGated() {
     } else {
         tasksHtml = `
             <div style="padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
-                <p style="margin: 0;">No active station tasks currently assigned. Please check with your manager for station assignment.</p>
+                <p style="margin: 0;">No active station tasks currently assigned for <strong>${stationKey || 'your station'}</strong>. Please check with your manager.</p>
             </div>
         `;
     }
@@ -687,7 +686,7 @@ function renderCookChecklistGated() {
                     <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Checklist</button>
                 </div>
             </div>
-            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Review your station tasks below. All audits, score check-offs, and final sign-offs are conducted by management during the Shift Audit.</p>
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Assigned Station: <strong>${stationKey ? stationKey.toUpperCase() : 'None'}</strong>. Review your tasks below. All audits and final sign-offs are conducted by management.</p>
         </div>
         <div class="card">
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; max-height: 450px; overflow-y: auto;">
@@ -696,6 +695,13 @@ function renderCookChecklistGated() {
         </div>
     `;
 }
+
+// Automatically execute renderCookChecklistGated if the cook dashboard is active
+document.addEventListener("DOMContentLoaded", () => {
+    if (Store.role === 'cook' || (Store.user && Store.user.role === 'cook')) {
+        renderCookChecklistGated();
+    }
+});
 function completeSpecialProject() {
     if (!Store.user) return;
     
