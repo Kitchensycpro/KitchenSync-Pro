@@ -626,16 +626,41 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    const container = document.getElementById('checklist-container') || document.getElementById('cook-dashboard-content');
-    if (!container || !Store.user) return;
+    // Check multiple potential container IDs used across different dashboards
+    const container = document.getElementById('checklist-container') || 
+                      document.getElementById('cook-dashboard-content') || 
+                      document.getElementById('cook-checklist-view');
+    
+    if (!container) {
+        console.warn("Cook checklist container element not found in DOM.");
+        return;
+    }
 
-    // Retrieve active station tasks assigned to the cook
-    const tasks = Store.assignedStationTasks || Store.currentChecklistTasks || [];
+    if (!Store.user) return;
+
+    // Fallback search across all possible task storage arrays in Store
+    let tasks = Store.assignedStationTasks || 
+                Store.currentChecklistTasks || 
+                Store.activeChecklist || 
+                Store.stationTasks;
+
+    // If tasks is still empty, check if it's stored inside an active station object
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+        const stationKey = Store.assignedStation || Store.assignedChecklistKey;
+        if (stationKey && Store.checklists && Store.checklists[stationKey]) {
+            tasks = Store.checklists[stationKey];
+        } else if (Store.stations && Array.isArray(Store.stations)) {
+            const currentStation = Store.stations.find(s => s.name === stationKey || s.id === stationKey);
+            if (currentStation && currentStation.tasks) {
+                tasks = currentStation.tasks;
+            }
+        }
+    }
 
     let tasksHtml = "";
     if (Array.isArray(tasks) && tasks.length > 0) {
         tasksHtml = tasks.map((t, idx) => {
-            const label = t.label || t.name || t.text || `Task ${idx + 1}`;
+            const label = typeof t === 'string' ? t : (t.label || t.name || t.text || `Task ${idx + 1}`);
             return `
                 <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
                     <span style="font-size: 1.1rem; color: #64748b;">📄</span>
@@ -648,7 +673,7 @@ function renderCookChecklistGated() {
     } else {
         tasksHtml = `
             <div style="padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
-                <p style="margin: 0;">No active station tasks currently assigned. Please check with your manager.</p>
+                <p style="margin: 0;">No active station tasks currently assigned. Please check with your manager for station assignment.</p>
             </div>
         `;
     }
