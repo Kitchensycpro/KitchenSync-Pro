@@ -638,20 +638,22 @@ function renderCookChecklistGated() {
 
     if (!Store.user) return;
 
-    // 2. Resolve the assigned station key (e.g. 'grill', 'prep', etc.)
-    const stationKey = Store.assignedStation || Store.assignedChecklistKey;
-    
-    // 3. Pull tasks from Store.checklists using the station key, or fallbacks
+    // 2. Resolve the assigned station key (e.g. 'range_open', 'grill_fry_open', etc.)
+    // Check Store.user.station first, then fallback store properties
+    const rawStation = Store.assignedStationKey || Store.assignedChecklistKey || Store.assignedStation || (Store.user ? Store.user.station : '');
+    const stationKey = String(rawStation).trim().toLowerCase();
+
+    // 3. Directly pull tasks from CHECKLIST_SPECS using the station key and current language
     let tasks = [];
-    if (stationKey && Store.checklists) {
-        // Look up by exact key or lowercase match
-        const foundKey = Object.keys(Store.checklists).find(k => k.toLowerCase() === String(stationKey).toLowerCase());
-        if (foundKey) {
-            tasks = Store.checklists[foundKey];
+    if (stationKey && CHECKLIST_SPECS[stationKey]) {
+        const langLang = Store.lang || 'en';
+        const specItems = CHECKLIST_SPECS[stationKey].items;
+        if (specItems) {
+            tasks = specItems[langLang] || specItems['en'] || [];
         }
     }
 
-    // Fallbacks if not found in Store.checklists
+    // Secondary fallbacks if not matched in specs
     if (!Array.isArray(tasks) || tasks.length === 0) {
         tasks = Store.assignedStationTasks || Store.currentChecklistTasks || Store.activeChecklist || [];
     }
@@ -672,10 +674,12 @@ function renderCookChecklistGated() {
     } else {
         tasksHtml = `
             <div style="padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
-                <p style="margin: 0;">No active station tasks currently assigned for <strong>${stationKey || 'your station'}</strong>. Please check with your manager.</p>
+                <p style="margin: 0;">No active station tasks currently assigned for <strong>${stationKey || 'your station'}</strong>. Please check with your manager for station assignment.</p>
             </div>
         `;
     }
+
+    const prettyStationName = stationKey ? stationKey.replace(/_/g, ' ').toUpperCase() : 'NONE';
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -686,7 +690,7 @@ function renderCookChecklistGated() {
                     <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Checklist</button>
                 </div>
             </div>
-            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Assigned Station: <strong>${stationKey ? stationKey.toUpperCase() : 'None'}</strong>. Review your tasks below. All audits and final sign-offs are conducted by management.</p>
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Assigned Station: <strong>${prettyStationName}</strong>. Review your tasks below. All audits, score check-offs, and final sign-offs are conducted by management during the Shift Audit.</p>
         </div>
         <div class="card">
             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; max-height: 450px; overflow-y: auto;">
@@ -695,13 +699,6 @@ function renderCookChecklistGated() {
         </div>
     `;
 }
-
-// Automatically execute renderCookChecklistGated if the cook dashboard is active
-document.addEventListener("DOMContentLoaded", () => {
-    if (Store.role === 'cook' || (Store.user && Store.user.role === 'cook')) {
-        renderCookChecklistGated();
-    }
-});
 function completeSpecialProject() {
     if (!Store.user) return;
     
