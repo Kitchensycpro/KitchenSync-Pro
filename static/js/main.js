@@ -2006,54 +2006,38 @@ function openShiftChecklistModal(shiftId) {
     const modalBody = document.getElementById('shift-modal-body');
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
 
-    // Find the employee object associated with this shift to retrieve special project data
     const employee = Store.employees.find(e => String(e.id || e.ID) === String(shift.empId || shift.EmpId || shift.EMPID));
     const specialProjectName = employee ? (employee.specialProject || employee.SpecialProject || "") : "";
     const specialProjectStatus = employee ? (employee.specialProjectStatus || employee.SpecialProjectStatus || "None Assigned") : "None Assigned";
     const empId = employee ? (employee.id || employee.ID) : "";
 
-    // ROBUST TASK PARSER: Check shift.tasks, or parse JSON from shift.notes saved in Sheets
+    // Robustly parse tasks array from shift object or notes
     let rawTasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
-    
     if (!rawTasks && shift.notes && typeof shift.notes === 'string' && shift.notes.startsWith('[')) {
-        try {
-            rawTasks = JSON.parse(shift.notes);
-        } catch (e) {
-            console.warn("Could not parse tasks JSON from shift.notes:", e);
-        }
+        try { rawTasks = JSON.parse(shift.notes); } catch (e) { rawTasks = []; }
     }
 
-    let tasks = Array.isArray(rawTasks) ? rawTasks : [];
+    // Normalize tasks into clean objects with explicit boolean check flags
+    let tasks = Array.isArray(rawTasks) ? rawTasks.map(t => {
+        const label = typeof t === 'string' ? t : (t.label || t.name || t.text || '');
+        const isDone = t.completed === true || t.checked === true || String(t.status).toLowerCase() === 'completed';
+        return { label: label, completed: isDone, checked: isDone };
+    }) : [];
 
-    // CRITICAL: If the shift is NOT yet signed off by management, start all tasks unchecked 
-    // so managers can manually audit what was actually completed!
-    if (!isSignedOff) {
-        tasks = tasks.map(t => {
-            const label = typeof t === 'string' ? t : (t.label || t.name || t.text || '');
-            return { label, completed: false, checked: false };
-        });
-        // Reset initial score representation for the blank audit view
-        shift.scorePct = 0;
-        shift.tasksCompleted = 0;
-        shift.totalTasks = tasks.length;
-        shift.pointsEarned = 0;
-        shift.totalPointsPossible = tasks.length * 10;
-    }
+    shift.tasks = tasks; // Ensure shift.tasks reference is uniform
 
     let tasksListHTML = "";
     if (tasks.length > 0) {
         tasksListHTML = tasks.map((t, idx) => {
-            const label = typeof t === 'string' ? t : (t.label || t.name || t.text || `Task ${idx + 1}`);
-            const isCompleted = isSignedOff ? (t.completed === true || t.checked === true) : false;
-            
+            const isChecked = t.completed || t.checked;
             return `
                 <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                     <input type="checkbox" 
                            style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" 
-                           ${isCompleted ? 'checked' : ''} 
+                           ${isChecked ? 'checked' : ''} 
                            onchange="toggleShiftTaskAudit('${shift.id || shift.ID}', ${idx}, this.checked)">
                     <div style="flex: 1;">
-                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${label}</span>
+                        <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${t.label}</span>
                     </div>
                 </div>
             `;
@@ -2084,9 +2068,17 @@ function openShiftChecklistModal(shiftId) {
         `;
     }
 
-    const currentScore = Number(shift.scorePct || shift.ScorePct || 0);
-    const currentPointsEarned = Number(shift.pointsEarned || (currentScore > 0 ? (currentScore / 100) * (tasks.length * 10) : 0));
-    const totalPossiblePts = tasks.length * 10;
+    // Calculate current scores based on active checklist state
+    const totalTasks = tasks.length;
+    const completedCount = tasks.filter(t => t.completed || t.checked).length;
+    const currentScore = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+    const pointsEarned = completedCount * 10;
+    const totalPointsPossible = totalTasks * 10;
+
+    let initialTier = "Needs Improvement ⚠️";
+    if (completedCount >= 13) initialTier = "Gold 🥇";
+    else if (completedCount >= 10) initialTier = "Silver 🥈";
+    else if (completedCount >= 8) initialTier = "Bronze 🥉";
 
     modalBody.innerHTML = `
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
@@ -2095,8 +2087,8 @@ function openShiftChecklistModal(shiftId) {
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;" id="modal-score-summary">
-            <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong id="modal-live-score">${currentScore}% (${currentPointsEarned}/${totalPossiblePts} pts)</strong></div>
-            <div><span style="font-size: 0.8rem; color: #64748b;">Status:</span><br><strong id="modal-live-status">${currentScore >= 85 ? '✅ Goal Met' : '❌ Missed'}</strong></div>
+            <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong id="modal-live-score">${currentScore}% (${completedCount}/${totalTasks} tasks | ${pointsEarned} pts)</strong></div>
+            <div><span style="font-size: 0.8rem; color: #64748b;">Tier Status:</span><br><strong id="modal-live-status">${initialTier}</strong></div>
         </div>
 
         ${specialProjectHTML}
@@ -2121,7 +2113,7 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
     if (!shift) return;
 
-    let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
+    let tasks = shift.tasks || shift.Tasks || [];
     if (typeof tasks === 'string') {
         try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
     }
@@ -2137,7 +2129,6 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         const completedCount = tasks.filter(t => t.completed || t.checked).length;
         const totalTasks = tasks.length;
         
-        const totalPointsPossible = totalTasks * 10;
         const pointsEarned = completedCount * 10;
         const percentageScore = Math.round((completedCount / totalTasks) * 100);
         
@@ -2152,17 +2143,17 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         shift.tasksCompleted = completedCount;
         shift.totalTasks = totalTasks;
         shift.pointsEarned = pointsEarned;
-        shift.totalPointsPossible = totalPointsPossible;
+        shift.totalPointsPossible = totalTasks * 10;
         shift.status = tierLabel;
         shift.Status = tierLabel;
 
-        // 1. Update modal live text elements
+        // Update modal live view text
         const scoreEl = document.getElementById('modal-live-score');
         const statusEl = document.getElementById('modal-live-status');
         if (scoreEl) scoreEl.innerText = `${percentageScore}% (${completedCount}/${totalTasks} tasks | ${pointsEarned} pts)`;
         if (statusEl) statusEl.innerText = tierLabel;
 
-        // 2. Concurrently re-render the active manager/GM dashboard view so the background table updates live!
+        // Concurrently update background dashboard table
         const currentRole = String(Store.role || "").trim().toLowerCase();
         if (currentRole === 'gm' || currentRole.includes('general')) {
             if (typeof renderGMDashboard === 'function') renderGMDashboard();
