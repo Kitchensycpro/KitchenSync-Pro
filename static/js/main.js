@@ -1111,7 +1111,7 @@ function submitManagerShiftChecklist() {
 }
 
 function managerSignOffShift(shiftId) {
-    const shift = Store.shifts.find(s => String(s.id).trim() === String(shiftId).trim());
+    const shift = Store.shifts.find(s => String(s.id || s.ID).trim() === String(shiftId).trim());
     if (!shift) return;
 
     let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
@@ -1119,15 +1119,15 @@ function managerSignOffShift(shiftId) {
         try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
     }
 
-    if (Array.isArray(tasks) && tasks.length > 0) {
-        const totalTasks = tasks.length;
-        const completedCount = tasks.filter(t => t.completed || t.checked).length;
-        
+    let completedCount = 0;
+    let totalTasks = tasks.length;
+
+    if (Array.isArray(tasks) && totalTasks > 0) {
+        completedCount = tasks.filter(t => t.completed || t.checked).length;
         const totalPointsPossible = totalTasks * 10;
         const pointsEarned = completedCount * 10;
         const percentageScore = Math.round((completedCount / totalTasks) * 100);
         
-        // Tier Evaluation Logic
         let tierLabel = "Needs Improvement ⚠️";
         if (completedCount >= 13) tierLabel = "Gold 🥇";
         else if (completedCount >= 10) tierLabel = "Silver 🥈";
@@ -1140,16 +1140,17 @@ function managerSignOffShift(shiftId) {
         shift.pointsEarned = pointsEarned;
         shift.totalPointsPossible = totalPointsPossible;
         shift.status = tierLabel;
+        shift.Status = tierLabel;
         shift.notes = JSON.stringify(tasks);
     }
     
     shift.managerSignOff = true;
     shift.ManagerSignOff = true;
-    shift.signedOffBy = Store.user ? Store.user.name : "Manager";
+    shift.signedOffBy = Store.user ? (Store.user.name || Store.user.Name) : "Manager";
 
     ApiService.request('saveShift', { shift }).then(res => {
         if (res && res.success) {
-            alert("✅ Shift audited, scored, tiered, and signed off successfully!");
+            alert(`✅ Shift audited successfully! Score: ${shift.scorePct}% (${shift.status})`);
             loadGlobalAppData();
         } else {
             alert("⚠️ Failed to sync shift sign-off with cloud.");
@@ -1514,7 +1515,6 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
-    // Normalize both ID and Name to ensure reliable matching across payloads
     const cookId = String(Store.user.id || Store.user.ID || "").trim();
     const cookName = String(Store.user.name || Store.user.Name || "").trim().toLowerCase();
 
@@ -1533,21 +1533,36 @@ function renderCookDashboard() {
 
     let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts') || 'No completed & signed-off shift records found.'}</td></tr>` :
         myShifts.map(s => {
-            const score = Number(s.scorePct || s.ScorePct || 0);
-            const isGoalMet = score >= 85;
-            const completedTasks = Number(s.tasksCompleted || s.TasksCompleted || 0);
-            const totalTasks = Number(s.totalTasks || s.TotalTasks || 0);
-            
-            // 10 points per task calculation display (fallback if not explicitly pre-calculated)
-            const pointsEarned = Number(s.pointsEarned || (completedTasks * 10));
-            const totalPointsPossible = Number(s.totalPointsPossible || (totalTasks * 10));
+            // Parse tasks for dynamic calculation
+            let tasks = s.tasks || s.Tasks || [];
+            if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
+                try { tasks = JSON.parse(s.notes); } catch(e) {}
+            }
+            const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
+            const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
+
+            let score = Number(s.scorePct || s.ScorePct || 0);
+            if (score === 0 && totalTasks > 0 && tasksCompleted > 0) {
+                score = Math.round((tasksCompleted / totalTasks) * 100);
+            }
+
+            let tierLabel = s.status || s.Status || '';
+            if (!tierLabel || tierLabel === 'Completed' || tierLabel === 'Needs Review' || tierLabel === 'Pending Review' || score > 0) {
+                if (tasksCompleted >= 13) tierLabel = "Gold 🥇";
+                else if (tasksCompleted >= 10) tierLabel = "Silver 🥈";
+                else if (tasksCompleted >= 8) tierLabel = "Bronze 🥉";
+                else tierLabel = "Needs Improvement ⚠️";
+            }
+
+            const pointsEarned = tasksCompleted * 10;
+            const totalPointsPossible = totalTasks * 10;
 
             return `<tr>
                 <td>${s.date || s.Date || ''}</td>
                 <td>${s.station || s.Station || 'General'}</td>
-                <td>${completedTasks} / ${totalTasks} (${pointsEarned}/${totalPointsPossible} pts)</td>
+                <td>${tasksCompleted} / ${totalTasks} (${pointsEarned}/${totalPointsPossible} pts)</td>
                 <td><strong>${score}%</strong></td>
-                <td>${isGoalMet ? (t('goalMet') || '✅ Goal Met') : (t('missed') || '❌ Missed')}</td>
+                <td><span style="font-weight: bold; color: #1e3a8a;">${tierLabel}</span></td>
                 <td><span style="color: #166534; font-weight: bold;">✅ Approved & Logged</span></td>
             </tr>`;
         }).join('');
@@ -1565,7 +1580,7 @@ function renderCookDashboard() {
                         <th>${t('tblStation') || 'Station'}</th>
                         <th>${t('tblCompletedTasks') || 'Completed Tasks (Pts)'}</th>
                         <th>${t('tblScore') || 'Score'}</th>
-                        <th>${t('tblStatus') || 'Status'}</th>
+                        <th>Tier Level</th>
                         <th>Sign-Off</th>
                     </tr>
                 </thead>
@@ -1668,15 +1683,25 @@ function renderManagerDashboard() {
                         const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
                         const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
                         const sStation = s.station || s.Station || s.STATION || 'General';
-                        const sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
-                        const sTasksCompleted = Number(s.tasksCompleted || 0);
                         
-                        // Fallback tier calculation based on tasks completed if status string isn't set yet
+                        // Parse tasks for dynamic percentage and tier fallback calculations
+                        let tasks = s.tasks || s.Tasks || [];
+                        if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
+                            try { tasks = JSON.parse(s.notes); } catch(e) {}
+                        }
+                        const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
+                        const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
+
+                        let sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
+                        if (sScore === 0 && totalTasks > 0 && tasksCompleted > 0) {
+                            sScore = Math.round((tasksCompleted / totalTasks) * 100);
+                        }
+
                         let sTier = s.status || s.Status || '';
-                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review') {
-                            if (sTasksCompleted >= 13) sTier = "Gold 🥇";
-                            else if (sTasksCompleted >= 10) sTier = "Silver 🥈";
-                            else if (sTasksCompleted >= 8) sTier = "Bronze 🥉";
+                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review' || sScore > 0) {
+                            if (tasksCompleted >= 13) sTier = "Gold 🥇";
+                            else if (tasksCompleted >= 10) sTier = "Silver 🥈";
+                            else if (tasksCompleted >= 8) sTier = "Bronze 🥉";
                             else sTier = "Needs Improvement ⚠️";
                         }
 
@@ -1689,7 +1714,7 @@ function renderManagerDashboard() {
                                 <td><strong>${sName}</strong></td>
                                 <td>${sRole}</td>
                                 <td>${sStation}</td>
-                                <td><strong>${sScore}%</strong></td>
+                                <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
                                 <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
                                 <td onclick="event.stopPropagation()">
                                     ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
@@ -1914,14 +1939,24 @@ function renderGMDashboard() {
                         const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
                         const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
                         const sStation = s.station || s.Station || s.STATION || 'General';
-                        const sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
-                        const sTasksCompleted = Number(s.tasksCompleted || 0);
                         
+                        let tasks = s.tasks || s.Tasks || [];
+                        if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
+                            try { tasks = JSON.parse(s.notes); } catch(e) {}
+                        }
+                        const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
+                        const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
+
+                        let sScore = Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0);
+                        if (sScore === 0 && totalTasks > 0 && tasksCompleted > 0) {
+                            sScore = Math.round((tasksCompleted / totalTasks) * 100);
+                        }
+
                         let sTier = s.status || s.Status || '';
-                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review') {
-                            if (sTasksCompleted >= 13) sTier = "Gold 🥇";
-                            else if (sTasksCompleted >= 10) sTier = "Silver 🥈";
-                            else if (sTasksCompleted >= 8) sTier = "Bronze 🥉";
+                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review' || sScore > 0) {
+                            if (tasksCompleted >= 13) sTier = "Gold 🥇";
+                            else if (tasksCompleted >= 10) sTier = "Silver 🥈";
+                            else if (tasksCompleted >= 8) sTier = "Bronze 🥉";
                             else sTier = "Needs Improvement ⚠️";
                         }
 
@@ -1934,7 +1969,7 @@ function renderGMDashboard() {
                                 <td><strong>${sName}</strong></td>
                                 <td>${sRole}</td>
                                 <td>${sStation}</td>
-                                <td><strong>${sScore}%</strong></td>
+                                <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
                                 <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
                                 <td onclick="event.stopPropagation()">
                                     ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
@@ -2099,10 +2134,11 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         
         // Tier Evaluation Logic
         let tierLabel = "Needs Improvement ⚠️";
-        if (completedCount >= 13) tierLabel = "Gold 🥇 (13-15)";
-        else if (completedCount >= 10) tierLabel = "Silver 🥈 (10-12)";
-        else if (completedCount >= 8) tierLabel = "Bronze 🥉 (8-9)";
+        if (completedCount >= 13) tierLabel = "Gold 🥇";
+        else if (completedCount >= 10) tierLabel = "Silver 🥈";
+        else if (completedCount >= 8) tierLabel = "Bronze 🥉";
 
+        // Store score and points across all common property name variations
         shift.scorePct = percentageScore;
         shift.ScorePct = percentageScore;
         shift.tasksCompleted = completedCount;
@@ -2110,6 +2146,7 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         shift.pointsEarned = pointsEarned;
         shift.totalPointsPossible = totalPointsPossible;
         shift.status = tierLabel;
+        shift.Status = tierLabel;
 
         const scoreEl = document.getElementById('modal-live-score');
         const statusEl = document.getElementById('modal-live-status');
