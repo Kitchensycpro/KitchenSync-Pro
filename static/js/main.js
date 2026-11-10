@@ -1117,41 +1117,57 @@ function managerSignOffShift(shiftId) {
         return;
     }
 
-    // Safely extract and parse tasks with fallback array
-    let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
+    // 1. Capture live checkbox states directly from the DOM elements currently rendered in the modal if open,
+    // otherwise fallback to shift.tasks / shift.notes.
+    let tasks = shift.tasks || shift.Tasks || [];
     if (typeof tasks === 'string') {
         try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
     }
-    if (!Array.isArray(tasks)) {
-        // Fallback: If tasks array is missing entirely, check notes string or build a blank array
+    if (!Array.isArray(tasks) || tasks.length === 0) {
         if (typeof shift.notes === 'string' && shift.notes.startsWith('[')) {
             try { tasks = JSON.parse(shift.notes); } catch (e) { tasks = []; }
         }
-        if (!Array.isArray(tasks)) tasks = [];
     }
 
-    const totalTasks = tasks.length > 0 ? tasks.length : 15; // default to 15 if empty
+    // If modal is open, let's sync state from the actual HTML checkboxes on screen to be 100% sure we catch what the manager checked!
+    const modalCheckboxes = document.querySelectorAll('#shift-modal-body input[type="checkbox"]');
+    if (modalCheckboxes && modalCheckboxes.length > 0 && tasks.length === modalCheckboxes.length) {
+        modalCheckboxes.forEach((cb, idx) => {
+            if (tasks[idx]) {
+                tasks[idx].completed = cb.checked;
+                tasks[idx].checked = cb.checked;
+            }
+        });
+    }
+
+    const totalTasks = tasks.length > 0 ? tasks.length : 15;
     const completedCount = tasks.filter(t => t && (t.completed === true || t.checked === true)).length;
     
     const totalPointsPossible = totalTasks * 10;
     const pointsEarned = completedCount * 10;
     const percentageScore = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
     
-    // Tier Evaluation Logic
+    // Tier Evaluation Logic based on your exact task counts:
+    // Gold = 13-15, Silver = 10-12, Bronze = 8-9, Needs Improvement = < 8
     let tierLabel = "Needs Improvement ⚠️";
     if (completedCount >= 13) tierLabel = "Gold 🥇";
     else if (completedCount >= 10) tierLabel = "Silver 🥈";
     else if (completedCount >= 8) tierLabel = "Bronze 🥉";
     
+    // Explicitly update all property variations so backend Google Sheets and UI catch them
     shift.scorePct = percentageScore;
     shift.ScorePct = percentageScore;
+    shift.SCOREPCT = percentageScore;
     shift.tasksCompleted = completedCount;
+    shift.TasksCompleted = completedCount;
     shift.totalTasks = totalTasks;
+    shift.TotalTasks = totalTasks;
     shift.pointsEarned = pointsEarned;
     shift.totalPointsPossible = totalPointsPossible;
     shift.status = tierLabel;
     shift.Status = tierLabel;
     shift.notes = JSON.stringify(tasks);
+    shift.tasks = tasks;
     
     shift.managerSignOff = true;
     shift.ManagerSignOff = true;
@@ -1159,7 +1175,7 @@ function managerSignOffShift(shiftId) {
 
     ApiService.request('saveShift', { shift }).then(res => {
         if (res && res.success) {
-            alert(`✅ Shift audited successfully! Score: ${percentageScore}% (${tierLabel})`);
+            alert(`✅ Shift successfully audited & signed off!\nCompleted: ${completedCount}/${totalTasks} tasks (${pointsEarned} pts)\nScore: ${percentageScore}% | Tier: ${tierLabel}`);
             loadGlobalAppData();
         } else {
             alert("⚠️ Failed to sync shift sign-off with cloud.");
