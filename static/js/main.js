@@ -2147,7 +2147,6 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         else if (completedCount >= 10) tierLabel = "Silver 🥈";
         else if (completedCount >= 8) tierLabel = "Bronze 🥉";
 
-        // Store score and points across all common property name variations
         shift.scorePct = percentageScore;
         shift.ScorePct = percentageScore;
         shift.tasksCompleted = completedCount;
@@ -2157,10 +2156,19 @@ function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
         shift.status = tierLabel;
         shift.Status = tierLabel;
 
+        // 1. Update modal live text elements
         const scoreEl = document.getElementById('modal-live-score');
         const statusEl = document.getElementById('modal-live-status');
         if (scoreEl) scoreEl.innerText = `${percentageScore}% (${completedCount}/${totalTasks} tasks | ${pointsEarned} pts)`;
         if (statusEl) statusEl.innerText = tierLabel;
+
+        // 2. Concurrently re-render the active manager/GM dashboard view so the background table updates live!
+        const currentRole = String(Store.role || "").trim().toLowerCase();
+        if (currentRole === 'gm' || currentRole.includes('general')) {
+            if (typeof renderGMDashboard === 'function') renderGMDashboard();
+        } else {
+            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+        }
     }
 }
 function closeShiftChecklistModal() {
