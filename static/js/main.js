@@ -142,7 +142,7 @@ const MANAGER_STATIC_CHECKLIST = [
 
 const CHECKLIST_SPECS = {
     range_open: {
-        title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa" },
+        title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa"
         items: {
             en: [
                 "Turn on all equipment including both ovens, the waffle iron(s), meat grill, pancake grill, fryolators (set to 350), and the exhaust system.",
@@ -415,6 +415,147 @@ const CHECKLIST_SPECS = {
         }
     }
 };
+
+const MANAGER_CHECKLIST_SPECS = {
+    opening_manager: {
+        title: "Opening Manager Checklist",
+        items: {
+            en: [
+                "Unlock front door, back door, turn on all lights, Sonos music, and togo platforms",
+                "Review daily labor schedule and station assignments",
+                "Create prep list based on current inventory and projected daily sales",
+                "Properly set up BicCash in the desktop spreadsheets based on FOH assignments",
+                "Assign Pre-Shift food prep to line based off prep list above",
+                "Conduct a pre-shift talk-in with BOH and FOH team on daily goals",
+                "Log any low-volume or 86 items in the Manager Message Board",
+                "Assign extra duties as necessary to dish/utility team",
+                "Check bathrooms for cleanliness, trash, and paper stock",
+                "Ensure the open sign is lit by 8 a.m.",
+                "Monitor the front for take-out orders and guest seating",
+                "Assist service team and line as necessary throughout the shift",
+                "Conduct consistent table checks to ensure guest satisfaction",
+                "Monitor labor and make cuts as necessary",
+                "Perform credit card audit, close down dayshift to go platforms, then enter BicCash and Daily Reconciliation on the desktop computer."
+            ]
+        }
+    },
+    closing_manager: {
+        title: "Closing Manager Checklist",
+        items: {
+            en: [
+                "Assist the day shift manager in transitioning to the evening shift",
+                "Ensure FOH and BOH staff are properly assigned",
+                "Assign Mid-shift prep list to line team as necessary",
+                "Assign extra duties as necessary to dish/utility",
+                "Conduct pre-shift talk-ins with BOH and FOH team on evening goals",
+                "Monitor the front for take-out orders and guest seating",
+                "Assist service team and BOH as necessary throughout the shift",
+                "Conduct consistent table checks to ensure guest satisfaction",
+                "Monitor labor and make cuts as necessary",
+                "Assign side work and check all sidework and station cleanliness",
+                "Perform credit card audit, close down night shift to go platforms, then enter BicCash and daily Reconciliation on the desktop computer",
+                "Clean entry door, vacuum all rugs, and pull bar mats",
+                "Ensure all trash is empty, inspect bathroom and mop entire FOH floor",
+                "Conduct a line walk-through prior to line team being cut and check thaw pull for the next shift",
+                "Ensure all equipment is off at close, lights off, and doors are locked."
+            ]
+        }
+    }
+};
+
+function renderManagerAssignmentWidget() {
+    const container = document.getElementById('manager-assignment-widget-container');
+    if (!container) return;
+
+    // Filter employees who are Managers or GMs
+    const managers = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+    });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Manager on Duty (MOD) Shift Assignment</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign managers to Opening or Closing checklists for GM audit and scoring.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
+                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Manager --</option>
+                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || 'Manager'})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type:</label>
+                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
+                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
+                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign & Generate Audit 🚀</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function assignManagerShift() {
+    const empSelect = document.getElementById('sel-mod-employee');
+    const typeSelect = document.getElementById('sel-mod-type');
+    
+    if (!empSelect || !empSelect.value || !typeSelect || !typeSelect.value) {
+        alert("Please select both a manager and a checklist type.");
+        return;
+    }
+
+    const empId = empSelect.value;
+    const checklistKey = typeSelect.value;
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) return;
+
+    // Local EST Date helper
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const spec = MANAGER_CHECKLIST_SPECS[checklistKey];
+    const taskItemsText = spec && spec.items && spec.items['en'] ? spec.items['en'] : [];
+    const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
+
+    const initialManagerShift = {
+        id: `MOD-SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        empId: emp.id || emp.ID,
+        empName: emp.name || emp.Name,
+        role: 'MANAGER',
+        station: spec.title,
+        date: todayStr,
+        tasksCompleted: 0,
+        totalTasks: serializedTasks.length,
+        scorePct: 0,
+        status: "Pending Review",
+        notes: JSON.stringify(serializedTasks),
+        managerSignOff: false,
+        tasks: serializedTasks,
+        EmpId: emp.id || emp.ID,
+        EmpName: emp.name || emp.Name,
+        ScorePct: 0,
+        TotalTasks: serializedTasks.length,
+        TasksCompleted: 0
+    };
+
+    Store.shifts.push(initialManagerShift);
+    ApiService.request('saveShift', { shift: initialManagerShift }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${spec.title}! Audit record posted.`);
+            if (typeof renderGMDashboard === 'function') renderGMDashboard();
+        } else {
+            alert("⚠️ Failed to sync manager shift record to cloud.");
+        }
+    });
+}
 
 const TRAINING_MODULES = [
     {
@@ -723,23 +864,53 @@ function completeSpecialProject() {
 }
 
 function renderManagerChecklist() {
-    const container = document.getElementById('checklist-container');
+    const container = document.getElementById('manager-checklist-content');
     if (!container) return;
-    container.innerHTML = '';
-    const banner = document.createElement('div');
-    banner.className = 'card';
-    banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
-    banner.innerHTML = `<h3 style="color: #166534; margin: 0;">📍 Shift Manager Operational Checklist</h3><p style="margin: 4px 0 0 0; font-size: 0.85rem; color: #15803d;">Daily shift management and verification standards.</p>`;
-    container.appendChild(banner);
-    let html = `<div class="card checklist-section"><h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📋 Shift Manager Procedures</h3>`;
-    MANAGER_STATIC_CHECKLIST.forEach(item => {
-        html += `<div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;"><input type="checkbox" class="task-checkbox" id="cb-${item.id}" style="width:20px;height:20px;cursor:pointer;"><div><div class="task-title" style="font-weight:600;color:#334155;">${item.title}</div><div class="task-desc" style="font-size:0.85rem; color:#64748b;">${item.desc}</div></div></div>`;
-    });
-    html += `</div>`;
-    container.innerHTML += html;
-    container.innerHTML += `<div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"><button class="btn btn-primary" onclick="submitManagerShiftChecklist()">💾 Submit Manager Shift Checklist</button><button class="btn btn-secondary" onclick="window.print()">🖨️ Print Manager Checklist</button></div>`;
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">📋 Manager Operational Checklists</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Select an operational checklist to view or complete opening/closing manager standards.</p>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" onclick="switchManagerChecklistView('opening_manager')">☀️ Opening Manager Checklist</button>
+                <button class="btn btn-secondary" onclick="switchManagerChecklistView('closing_manager')">🌙 Closing Manager Checklist</button>
+            </div>
+        </div>
+        <div id="manager-checklist-active-view"></div>
+    `;
+
+    // Default to opening manager checklist view on load
+    switchManagerChecklistView('opening_manager');
 }
 
+function switchManagerChecklistView(checklistKey) {
+    const activeViewContainer = document.getElementById('manager-checklist-active-view');
+    if (!activeViewContainer) return;
+
+    const spec = MANAGER_CHECKLIST_SPECS[checklistKey];
+    if (!spec) return;
+
+    const items = spec.items['en'] || [];
+
+    activeViewContainer.innerHTML = `
+        <div class="card">
+            <h4 style="color: #1e3a8a; margin-top: 0;">${spec.title}</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Review daily operating procedures and standard requirements below.</p>
+            
+            <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 10px;">
+                ${items.map((taskText, idx) => `
+                    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <input type="checkbox" style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" disabled>
+                        <div style="flex: 1;">
+                            <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${idx + 1}. ${taskText}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
 function updateGreetingLabel() {
     const label = document.getElementById('logged-in-user-label');
     if (label && Store.user) {
@@ -1773,28 +1944,36 @@ function handleShiftCalendarLookup(dateVal) {
 function renderGMDashboard() {
     const container = document.getElementById('gm-dashboard-content');
     if (!container) return;
+
     const pendingCerts = Store.certifications.filter(c => {
         const passed = c.passed === true || String(c.passed).toLowerCase() === 'true' || Number(c.score) >= 85;
         const signed = c.managerSignOff === true || String(c.managerSignOff).toLowerCase() === 'true';
         return passed && !signed;
     });
+
     const startDate = new Date(CONFIG.PROGRAM_START_DATE);
-    const endDate = new Date(startDate); endDate.setDate(endDate.getDate() + 13);
+    const endDate = new Date(startDate); 
+    endDate.setDate(endDate.getDate() + 13);
     
-    // Robust cycle shift filter ignoring trailing timestamps like T05
+    // Robust cycle shift filter ignoring trailing timestamps
     const cycleShifts = Store.shifts.filter(s => { 
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return false;
         const d = new Date(rawDate.substring(0, 10)); 
         return d >= startDate && d <= endDate; 
     });
+
+    // Separate cook shifts vs manager operational shifts for reporting
+    const cookShifts = cycleShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
+    const managerShiftsCycle = cycleShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
     
     const dailyCompliance = {};
     for (let i = 0; i < 14; i++) {
-        const curr = new Date(startDate); curr.setDate(curr.getDate() + i);
+        const curr = new Date(startDate); 
+        curr.setDate(curr.getDate() + i);
         dailyCompliance[curr.toISOString().split('T')[0]] = { total: 0, sum: 0 };
     }
-    cycleShifts.forEach(s => { 
+    cookShifts.forEach(s => { 
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return;
         const sDateStr = rawDate.substring(0, 10);
@@ -1807,7 +1986,7 @@ function renderGMDashboard() {
     const employeeAverages = {};
     Store.employees.forEach(emp => {
         const eId = String(emp.id || emp.ID || "").trim();
-        const eShifts = cycleShifts.filter(s => String(s.empId || s.EmpId || s.EMPID || "").trim() === eId);
+        const eShifts = cookShifts.filter(s => String(s.empId || s.EmpId || s.EMPID || "").trim() === eId);
         if (eShifts.length > 0) {
             const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0), 0);
             employeeAverages[eId] = { name: emp.name || emp.Name || "Staff", avg: Math.round(totalScore / eShifts.length), shiftsCount: eShifts.length };
@@ -1821,30 +2000,31 @@ function renderGMDashboard() {
         if (data.avg >= 87) { tier = 'Gold 🥇'; goldCount++; }
         else if (data.avg >= 67) { tier = 'Silver 🥈'; silverCount++; }
         else if (data.avg >= 53) { tier = 'Bronze 🥉'; bronzeCount++; }
-        if (tier !== 'None') { accountingRows.push(`<tr><td><strong>${data.name}</strong></td><td>${data.shiftsCount}</td><td>${data.avg}%</td><td><span style="font-weight:bold;color:#1e3a8a;">${tier}</span></td></tr>`); }
+        if (tier !== 'None') { 
+            accountingRows.push(`<tr><td><strong>${data.name}</strong></td><td>${data.shiftsCount}</td><td>${data.avg}%</td><td><span style="font-weight:bold;color:#1e3a8a;">${tier}</span></td></tr>`); 
+        }
     });
 
     // Ensure Store.selectedShiftDate defaults to today if uninitialized
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = (() => {
             const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         })();
     }
 
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robust date filter isolating YYYY-MM-DD for the selected lookup date
+    // Filter shifts for the selected lookup date
     const filteredShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
-        if (!rawDate) return true; // Fallback to show shifts if date key is absent
+        if (!rawDate) return true;
         return rawDate.substring(0, 10) === lookupDate;
     });
 
-    // Robust filter that catches any variation of completed status or whitespace
+    const filteredCookShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
+    const filteredManagerShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
+
     const pendingProjects = Store.employees.filter(e => {
         const proj = String(e.specialProject || e.SpecialProject || "").trim();
         const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
@@ -1855,18 +2035,24 @@ function renderGMDashboard() {
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <h3 style="color: #1e3a8a; margin-top: 0;">📈 General Manager Executive Suite & Bonus Program</h3>
-                <p style="font-size: 0.85rem; color: #64748b; margin: 0;">14-Day compliance tracking cycle.</p>
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0;">14-Day compliance tracking cycle & Operational Oversight.</p>
             </div>
             <div>
                 <button class="btn btn-secondary" style="color: #dc2626; border: 1px solid #dc2626;" onclick="executeMasterReset()">⚠️ Master Reset All Data</button>
             </div>
         </div>
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Active Team Members</span><h2 style="color: #1e3a8a; margin: 5px 0 0 0;">${Store.employees.length}</h2></div>
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Total Shifts Logged (Cycle)</span><h2 style="color: #1e3a8a; margin: 5px 0 0 0;">${cycleShifts.length}</h2></div>
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
-        <div class="card" style="margin-bottom: 1.5rem;"><h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
+
+        <!-- Manager Assignment Widget Container for Opening/Closing checklists -->
+        <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
             <div style="display: flex; gap: 6px; align-items: flex-end; height: 180px; padding: 20px 10px 10px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; margin-top: 1rem;">
                 ${Object.entries(dailyCompliance).map(([date, stats]) => {
                     const avg = stats.total > 0 ? Math.round(stats.sum / stats.total) : 0;
@@ -1874,15 +2060,17 @@ function renderGMDashboard() {
                 }).join('')}
             </div>
         </div>
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-            <div class="card"><h4 style="color: #1e3a8a; margin-top: 0;">🥧 Bonus Tier Allocation Distribution</h4>
+            <div class="card">
+                <h4 style="color: #1e3a8a; margin-top: 0;">🥧 Bonus Tier Allocation Distribution</h4>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
                     <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #ca8a04;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Gold Tier (13-15 tasks):</span> <span>${goldCount} Employee(s)</span></div></div>
                     <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #64748b;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Silver Tier (10-12 tasks):</span> <span>${silverCount} Employee(s)</span></div></div>
                     <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #b45309;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Bronze Tier (8-9 tasks):</span> <span>${bronzeCount} Employee(s)</span></div></div>
                 </div>
             </div>
-           <div class="card" id="bonus-accounting-card">
+            <div class="card" id="bonus-accounting-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                     <h4 style="color: #1e3a8a; margin: 0;">📑 Bonus Program Accounting Sheet</h4>
                     <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem;" onclick="window.print()">🖨️ Print Payout Report</button>
@@ -1904,7 +2092,7 @@ function renderGMDashboard() {
                 </div>
             </div>
         </div>
-        <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
+
         <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
@@ -1938,9 +2126,71 @@ function renderGMDashboard() {
             </table>
         </div>
 
+        <!-- MANAGER OPERATIONAL CHECKLISTS AUDITS TABLE -->
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Operational Checklist Audits (Opening / Closing)</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Review and audit Manager on Duty (MOD) opening and closing checklists.</p>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Manager Name</th>
+                        <th>Checklist Type</th>
+                        <th>Score</th>
+                        <th>Tier Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredManagerShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">No manager checklist audits assigned for ${lookupDate}.</td></tr>` : filteredManagerShifts.map(s => {
+                        const sDate = s.date || s.Date || '';
+                        const sName = s.empName || s.EmpName || 'Manager';
+                        const sStation = s.station || s.Station || 'Manager Checklist';
+                        
+                        let tasks = s.tasks || s.Tasks || [];
+                        if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
+                            try { tasks = JSON.parse(s.notes); } catch(e) {}
+                        }
+                        const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
+                        const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
+
+                        let sScore = Number(s.scorePct || s.ScorePct || 0);
+                        if (sScore === 0 && totalTasks > 0 && tasksCompleted > 0) {
+                            sScore = Math.round((tasksCompleted / totalTasks) * 100);
+                        }
+
+                        let sTier = s.status || s.Status || '';
+                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review' || sScore > 0) {
+                            if (tasksCompleted >= 13) sTier = "Gold 🥇";
+                            else if (tasksCompleted >= 10) sTier = "Silver 🥈";
+                            else if (tasksCompleted >= 8) sTier = "Bronze 🥉";
+                            else sTier = "Needs Improvement ⚠️";
+                        }
+
+                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true';
+                        const sId = s.id || s.ID || '';
+
+                        return `
+                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;" title="Click to audit manager checklist">
+                                <td>${sDate}</td>
+                                <td><strong>${sName}</strong></td>
+                                <td>${sStation}</td>
+                                <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
+                                <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
+                                <td onclick="event.stopPropagation()">
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- TEAM COOK SHIFT AUDITS TABLE -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits</h4>
+                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
                     <input type="date" id="gm-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
@@ -1959,7 +2209,7 @@ function renderGMDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => {
+                    ${filteredCookShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed cook shift records found for ${lookupDate}.</td></tr>` : filteredCookShifts.map(s => {
                         const sDate = s.date || s.Date || s.DATE || '';
                         const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
                         const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
@@ -2005,11 +2255,22 @@ function renderGMDashboard() {
                 </tbody>
             </table>
         </div>
-        <div class="card" style="margin-bottom: 1.5rem;"><h4 style="color: #1e3a8a; margin-top: 0;">🎓 Pending Training Certifications for Approval</h4>
-            <table class="data-table" style="width: 100%; margin-top: 1rem;"><thead><tr><th>Employee ID</th><th>Module ID</th><th>Score</th><th>Action</th></tr></thead>
-                <tbody>${pendingCerts.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending certifications.</td></tr>` : pendingCerts.map(c => `<tr><td>${c.empId || c.EMPID}</td><td>${c.modId || c.MODID}</td><td>${c.score}%</td><td><button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="gmSignOffCert('${c.empId || c.EMPID}','${c.modId || c.MODID}')">Approve ✅</button></td></tr>`).join('')}</tbody></table>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">🎓 Pending Training Certifications for Approval</h4>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr><th>Employee ID</th><th>Module ID</th><th>Score</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    ${pendingCerts.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending certifications.</td></tr>` : pendingCerts.map(c => `<tr><td>${c.empId || c.EMPID}</td><td>${c.modId || c.MODID}</td><td>${c.score}%</td><td><button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem;" onclick="gmSignOffCert('${c.empId || c.EMPID}','${c.modId || c.MODID}')">Approve ✅</button></td></tr>`).join('')}
+                </tbody>
+            </table>
         </div>`;
-    renderManagerAssignmentWidget();
+
+    if (typeof renderManagerAssignmentWidget === 'function') {
+        renderManagerAssignmentWidget();
+    }
     renderSpecialProjectWidget();
 }
 function openShiftChecklistModal(shiftId) {
