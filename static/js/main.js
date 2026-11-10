@@ -1112,37 +1112,46 @@ function submitManagerShiftChecklist() {
 
 function managerSignOffShift(shiftId) {
     const shift = Store.shifts.find(s => String(s.id || s.ID).trim() === String(shiftId).trim());
-    if (!shift) return;
+    if (!shift) {
+        alert("❌ Shift record not found.");
+        return;
+    }
 
+    // Safely extract and parse tasks with fallback array
     let tasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
     if (typeof tasks === 'string') {
         try { tasks = JSON.parse(tasks); } catch (e) { tasks = []; }
     }
-
-    let completedCount = 0;
-    let totalTasks = tasks.length;
-
-    if (Array.isArray(tasks) && totalTasks > 0) {
-        completedCount = tasks.filter(t => t.completed || t.checked).length;
-        const totalPointsPossible = totalTasks * 10;
-        const pointsEarned = completedCount * 10;
-        const percentageScore = Math.round((completedCount / totalTasks) * 100);
-        
-        let tierLabel = "Needs Improvement ⚠️";
-        if (completedCount >= 13) tierLabel = "Gold 🥇";
-        else if (completedCount >= 10) tierLabel = "Silver 🥈";
-        else if (completedCount >= 8) tierLabel = "Bronze 🥉";
-        
-        shift.scorePct = percentageScore;
-        shift.ScorePct = percentageScore;
-        shift.tasksCompleted = completedCount;
-        shift.totalTasks = totalTasks;
-        shift.pointsEarned = pointsEarned;
-        shift.totalPointsPossible = totalPointsPossible;
-        shift.status = tierLabel;
-        shift.Status = tierLabel;
-        shift.notes = JSON.stringify(tasks);
+    if (!Array.isArray(tasks)) {
+        // Fallback: If tasks array is missing entirely, check notes string or build a blank array
+        if (typeof shift.notes === 'string' && shift.notes.startsWith('[')) {
+            try { tasks = JSON.parse(shift.notes); } catch (e) { tasks = []; }
+        }
+        if (!Array.isArray(tasks)) tasks = [];
     }
+
+    const totalTasks = tasks.length > 0 ? tasks.length : 15; // default to 15 if empty
+    const completedCount = tasks.filter(t => t && (t.completed === true || t.checked === true)).length;
+    
+    const totalPointsPossible = totalTasks * 10;
+    const pointsEarned = completedCount * 10;
+    const percentageScore = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+    
+    // Tier Evaluation Logic
+    let tierLabel = "Needs Improvement ⚠️";
+    if (completedCount >= 13) tierLabel = "Gold 🥇";
+    else if (completedCount >= 10) tierLabel = "Silver 🥈";
+    else if (completedCount >= 8) tierLabel = "Bronze 🥉";
+    
+    shift.scorePct = percentageScore;
+    shift.ScorePct = percentageScore;
+    shift.tasksCompleted = completedCount;
+    shift.totalTasks = totalTasks;
+    shift.pointsEarned = pointsEarned;
+    shift.totalPointsPossible = totalPointsPossible;
+    shift.status = tierLabel;
+    shift.Status = tierLabel;
+    shift.notes = JSON.stringify(tasks);
     
     shift.managerSignOff = true;
     shift.ManagerSignOff = true;
@@ -1150,7 +1159,7 @@ function managerSignOffShift(shiftId) {
 
     ApiService.request('saveShift', { shift }).then(res => {
         if (res && res.success) {
-            alert(`✅ Shift audited successfully! Score: ${shift.scorePct}% (${shift.status})`);
+            alert(`✅ Shift audited successfully! Score: ${percentageScore}% (${tierLabel})`);
             loadGlobalAppData();
         } else {
             alert("⚠️ Failed to sync shift sign-off with cloud.");
