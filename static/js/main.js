@@ -2198,12 +2198,6 @@ function renderGMDashboard() {
     const filteredCookShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
     const filteredManagerShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
 
-    const pendingProjects = Store.employees.filter(e => {
-        const proj = String(e.specialProject || e.SpecialProject || "").trim();
-        const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
-        return proj !== "" && (status.includes("pending") || status.includes("completed"));
-    });
-
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
@@ -2222,7 +2216,10 @@ function renderGMDashboard() {
         </div>
 
         <!-- MANAGER ON DUTY ASSIGNMENT WIDGET IN GM SUITE -->
-        <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
+        <div id="gm-mod-widget-box" style="margin-bottom: 1.5rem;"></div>
+
+        <!-- COOK ASSIGNMENT WIDGET IN GM SUITE -->
+        <div id="gm-cook-widget-box" style="margin-bottom: 1.5rem;"></div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
@@ -2303,7 +2300,7 @@ function renderGMDashboard() {
             </table>
         </div>
 
-        <!-- MANAGER SHIFT AUDITS SECTION (GM DASHBOARD ONLY) - INTERACTIVE SCORING -->
+        <!-- MANAGER SHIFT AUDITS SECTION (GM DASHBOARD ONLY) -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Shift Audits (MOD Oversight)</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Review, score, and audit Manager on Duty (MOD) opening and closing checklists.</p>
@@ -2376,10 +2373,8 @@ function renderGMDashboard() {
             </table>
         </div>`;
 
-    if (typeof renderManagerAssignmentWidget === 'function') {
-        renderManagerAssignmentWidget();
-    }
-    renderSpecialProjectWidget();
+    renderGMManagerAssignmentWidget('gm-mod-widget-box');
+    renderManagerAssignmentWidget('gm-cook-widget-box');
 }
 function openShiftChecklistModal(shiftId) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
