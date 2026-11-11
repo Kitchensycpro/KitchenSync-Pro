@@ -505,6 +505,48 @@ function renderManagerAssignmentWidget() {
         </div>
     `;
 }
+function renderGMManagerAssignmentWidget() {
+    const container = document.getElementById('gm-manager-assignment-widget-container');
+    if (!container) return;
+
+    // Strict Role Check: Omit entirely if not General Manager
+    if (!Store.role || String(Store.role).toLowerCase() !== 'gm') {
+        container.innerHTML = '';
+        return;
+    }
+
+    const managers = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+    });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
+                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Manager --</option>
+                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || 'Manager'})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
+                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
+                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
+                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
 function assignManagerShift() {
     const empSelect = document.getElementById('sel-mod-employee');
     const typeSelect = document.getElementById('sel-mod-type');
