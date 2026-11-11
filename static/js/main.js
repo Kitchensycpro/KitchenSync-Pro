@@ -91,8 +91,6 @@ const UIController = {
         if (id === 'roster') renderRosterView();
     }
 };
-
-document.addEventListener('DOMContentLoaded', () => UIController.init());
 const TRANSLATIONS = {
     en: {
         myChecklist: "📝 Station Checklist", shiftsCompleted: "⭐ Shifts Completed",
@@ -468,7 +466,6 @@ const MANAGER_CHECKLIST_SPECS = {
 };
 
 function renderManagerAssignmentWidget() {
-    // Targets both manager and GM cook assignment containers
     const containers = [
         document.getElementById('cook-assignment-widget-container'),
         document.getElementById('cook-assignment-widget-container-gm')
@@ -1975,7 +1972,6 @@ function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
     if (!container) return;
     
-    // Ensure Store.selectedShiftDate defaults to today if uninitialized
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = (() => {
             const d = new Date();
@@ -1988,10 +1984,9 @@ function renderManagerDashboard() {
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robust date filter isolating YYYY-MM-DD, excluding Manager shifts from regular manager view
     const filteredShifts = Store.shifts.filter(s => {
         const rawRole = String(s.role || s.Role || "").toUpperCase();
-        if (rawRole === 'MANAGER') return false; // Managers view only cook shifts here
+        if (rawRole === 'MANAGER') return false;
 
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return true; 
@@ -2009,7 +2004,6 @@ function renderManagerDashboard() {
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
         </div>
-        <div id="manager-assignment-widget-container"></div>
         <div id="special-project-widget-container"></div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
@@ -2113,7 +2107,6 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
-    // Intentionally omitted renderManagerAssignmentWidget() so regular managers cannot assign MOD shifts
     renderSpecialProjectWidget();
 }
 function handleShiftCalendarLookup(dateVal) {
