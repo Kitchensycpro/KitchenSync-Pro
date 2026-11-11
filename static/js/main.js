@@ -77,12 +77,13 @@ const UIController = {
         
         if (id === 'manager-dashboard') {
             renderManagerDashboard();
-            // Note: renderManagerAssignmentWidget() is intentionally excluded here so regular managers cannot assign MOD shifts.
+            renderManagerAssignmentWidget(); // Restored cook assignment widget for managers
         }
         
         if (id === 'gm-dashboard') {
             renderGMDashboard();
-            renderManagerAssignmentWidget(); // Only General Manager has access to assign MOD shifts
+            renderManagerAssignmentWidget(); // Cook assignment for GM if needed
+            renderGMManagerAssignmentWidget(); // MOD assignment exclusively for GM
         }
         
         if (id === 'cook-training') renderTrainingView();
@@ -467,43 +468,38 @@ const MANAGER_CHECKLIST_SPECS = {
 };
 
 function renderManagerAssignmentWidget() {
-    // Restrict MOD assignment tool exclusively to the General Manager
-    if (!Store.role || String(Store.role).toLowerCase() !== 'gm') {
-        const container = document.getElementById('manager-assignment-widget-container');
-        if (container) container.innerHTML = '';
-        return;
-    }
-
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
 
-    const managers = Store.employees.filter(e => {
+    // Filter employees who are NOT managers (i.e. Cooks / Staff)
+    const cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
-        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
     });
+
+    const stations = ["Range Open", "Mid Open", "Grill/Fry Open", "Range/Mid-Split Open", "Grill/Fry/Mid-Split Open"];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
+            <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
-                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
-                        <option value="">-- Choose Manager --</option>
-                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || 'Manager'})</option>`).join('')}
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Team Member:</label>
+                    <select id="sel-cook-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Cook --</option>
+                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || 'Cook'})</option>`).join('')}
                     </select>
                 </div>
                 <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
-                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
-                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
-                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Assigned Station:</label>
+                    <select id="sel-cook-station" class="form-control" style="margin-top: 5px;">
+                        ${stations.map(st => `<option value="${st}">${st}</option>`).join('')}
                     </select>
                 </div>
                 <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift()">Assign Cook Shift 🚀</button>
                 </div>
             </div>
         </div>
@@ -1118,6 +1114,46 @@ function renderManagerAssignmentWidget() {
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Assign an Opening or Closing Manager checklist to a MOD. Once assigned, it will appear read-only on their dashboard.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
+                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Manager --</option>
+                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || 'Manager'})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
+                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
+                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
+                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderGMManagerAssignmentWidget() {
+    // Only render for General Manager
+    if (!Store.role || String(Store.role).toLowerCase() !== 'gm') return;
+
+    const container = document.getElementById('gm-manager-assignment-widget-container') || document.getElementById('manager-assignment-widget-container');
+    if (!container) return;
+
+    const managers = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+    });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
