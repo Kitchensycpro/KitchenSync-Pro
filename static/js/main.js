@@ -2270,16 +2270,6 @@ function renderGMDashboard() {
         } 
     });
 
-    const employeeAverages = {};
-    Store.employees.forEach(emp => {
-        const eId = String(emp.id || emp.ID || "").trim();
-        const eShifts = cookShifts.filter(s => String(s.empId || s.EmpId || s.EMPID || "").trim() === eId);
-        if (eShifts.length > 0) {
-            const totalScore = eShifts.reduce((acc, s) => acc + Number(s.scorePct || s.ScorePct || s.SCOREPCT || 0), 0);
-            employeeAverages[eId] = { name: emp.name || emp.Name || "Staff", avg: Math.round(totalScore / eShifts.length), shiftsCount: eShifts.length };
-        }
-    });
-
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = (() => {
             const d = new Date();
@@ -2298,6 +2288,13 @@ function renderGMDashboard() {
     const filteredCookShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
     const filteredManagerShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
 
+    // Get managers inline for the MOD assignment dropdown
+    let managers = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+    });
+    if (managers.length === 0) managers = Store.employees;
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
@@ -2315,14 +2312,31 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- MANAGER ON DUTY ASSIGNMENT WIDGET IN GM SUITE -->
-        <div id="gm-mod-widget-box" style="margin-bottom: 1.5rem;"></div>
-
-        <!-- SPECIAL PROJECT WIDGET IN GM SUITE -->
-        <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
-
-        <!-- COOK ASSIGNMENT WIDGET PLACED BELOW SPECIAL PROJECT WIDGET -->
-        <div id="gm-cook-widget-box" style="margin-bottom: 1.5rem;"></div>
+        <!-- MANAGER ON DUTY (MOD) ASSIGNMENT WIDGET (Hardcoded directly so it never vanishes) -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
+                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Manager --</option>
+                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role || 'Manager'})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
+                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
+                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
+                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
+                </div>
+            </div>
+        </div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
@@ -2475,10 +2489,6 @@ function renderGMDashboard() {
                 </tbody>
             </table>
         </div>`;
-
-    renderGMManagerAssignmentWidget('gm-mod-widget-box');
-    renderSpecialProjectWidget();
-    renderManagerAssignmentWidget('gm-cook-widget-box');
 }
 function openShiftChecklistModal(shiftId) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
