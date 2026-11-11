@@ -142,7 +142,7 @@ const MANAGER_STATIC_CHECKLIST = [
 
 const CHECKLIST_SPECS = {
     range_open: {
-        title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa"
+        title: { en: "Range Open Checklist", es: "Lista de Apertura de Estufa" }
         items: {
             en: [
                 "Turn on all equipment including both ovens, the waffle iron(s), meat grill, pancake grill, fryolators (set to 350), and the exhaust system.",
