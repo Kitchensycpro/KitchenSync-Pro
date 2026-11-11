@@ -865,23 +865,73 @@ function renderManagerChecklist() {
     const container = document.getElementById('manager-checklist-content');
     if (!container) return;
 
+    // Find if a manager shift is assigned for today for the logged-in user
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const activeUserId = String(Store.currentUser && (Store.currentUser.id || Store.currentUser.ID) || "").trim();
+    
+    const assignedShift = Store.shifts.find(s => {
+        const role = String(s.role || s.Role || "").toUpperCase();
+        if (role !== 'MANAGER') return false;
+        
+        const shiftEmpId = String(s.empId || s.EmpId || s.EMPID || "").trim();
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim().substring(0, 10);
+        
+        return shiftEmpId === activeUserId && rawDate === todayStr;
+    });
+
+    if (!assignedShift) {
+        container.innerHTML = `
+            <div class="card" style="text-align: center; padding: 2rem;">
+                <h3 style="color: #1e3a8a; margin-top: 0;">📋 Manager on Duty (MOD) Checklist</h3>
+                <p style="color: #64748b; font-size: 0.9rem;">No manager shift has been assigned to you for today yet by the General Manager.</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Extract tasks from assigned shift
+    let rawTasks = assignedShift.tasks || assignedShift.Tasks || [];
+    if (!rawTasks && assignedShift.notes && typeof assignedShift.notes === 'string' && assignedShift.notes.startsWith('[')) {
+        try { rawTasks = JSON.parse(assignedShift.notes); } catch(e) { rawTasks = []; }
+    }
+
+    const tasksListHTML = rawTasks.map((t, idx) => {
+        const isChecked = t.completed || t.checked;
+        return `
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                <input type="checkbox" 
+                       style="width: 18px; height: 18px; margin-top: 2px; cursor: not-allowed;" 
+                       ${isChecked ? 'checked' : ''} 
+                       disabled>
+                <div style="flex: 1;">
+                    <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${t.label || t.text}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
     container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem;">
-            <h3 style="color: #1e3a8a; margin-top: 0;">📋 Manager Operational Checklists</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Select an operational checklist to view or complete opening/closing manager standards.</p>
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="color: #1e3a8a; margin: 0;">📋 Assigned MOD Shift: ${assignedShift.station || assignedShift.Station || 'Manager Checklist'}</h3>
+                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Date: ${assignedShift.date || assignedShift.Date} | Status: <strong>${assignedShift.status || 'Pending Review'}</strong> (Read-Only Reference)</p>
+                </div>
+                <div>
+                    <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only MOD View</span>
+                </div>
+            </div>
             
-            <div style="display: flex; gap: 10px; margin-top: 1rem; flex-wrap: wrap;">
-                <button class="btn btn-primary" onclick="switchManagerChecklistView('opening_manager')">☀️ Opening Manager Checklist</button>
-                <button class="btn btn-secondary" onclick="switchManagerChecklistView('closing_manager')">🌙 Closing Manager Checklist</button>
+            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; background: #ffffff;">
+                ${tasksListHTML}
             </div>
         </div>
-        <div id="manager-checklist-active-view"></div>
     `;
-
-    // Default to opening manager checklist view on load
-    switchManagerChecklistView('opening_manager');
 }
-
 function switchManagerChecklistView(checklistKey) {
     const activeViewContainer = document.getElementById('manager-checklist-active-view');
     if (!activeViewContainer) return;
@@ -1057,40 +1107,99 @@ function submitCookShiftChecklist() {
 function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
-    const selectedDateStr = document.getElementById('shift-date')?.value || new Date().toISOString().split('T')[0];
 
-    const uniqueEmployees = Array.from(new Map(Store.employees.map(emp => [String(emp.id || emp.ID || emp.name || emp.Name).trim(), emp])).values());
-    const optionsHtml = uniqueEmployees.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('');
+    const managers = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
+    });
+
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h3 style="color: #1e3a8a; margin-top: 0;">👥 Station & Shift Line Assignments</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Schedule daily opening and closing line positions and assign cook checklists.</p>
-            <div style="margin: 1rem 0;"><label style="font-weight: 600; font-size: 0.9rem;">Select Date:</label><input type="date" id="shift-date" class="form-control" value="${selectedDateStr}" onchange="renderManagerAssignmentWidget()" style="margin-top: 4px; max-width: 200px;"></div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #0369a1; margin-top: 0;">☀️ Morning Shift 2-Cook Split</h4>
-                    <div style="margin-bottom: 8px;"><label style="font-size: 0.85rem; font-weight: bold;">Range / Mid-Split Open:</label><select id="sel-range_mid_split_open" class="form-control" style="width: 100%;"><option value="">-- Select Cook --</option>${optionsHtml}</select></div>
-                    <div style="margin-bottom: 8px;"><label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry / Mid-Split Open:</label><select id="sel-grill_fry_mid_split_open" class="form-control" style="width: 100%;"><option value="">-- Select Cook --</option>${optionsHtml}</select></div>
-                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="assignCooksGroup(['sel-range_mid_split_open', 'sel-grill_fry_mid_split_open'])">Assign Split Line 📌</button>
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign an Opening or Closing Manager checklist to a MOD. Once assigned, it will appear read-only on their dashboard.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
+                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Manager --</option>
+                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || 'Manager'})</option>`).join('')}
+                    </select>
                 </div>
-                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #0369a1; margin-top: 0;">☀️ Morning 3-Cook Line & Stations</h4>
-                    <div style="margin-bottom: 6px;"><label style="font-size: 0.85rem; font-weight: bold;">Range Open:</label><select id="sel-range_open" class="form-control" style="width: 100%;"><option value="">-- Select --</option>${optionsHtml}</select></div>
-                    <div style="margin-bottom: 6px;"><label style="font-size: 0.85rem; font-weight: bold;">Mid Open:</label><select id="sel-mid_open" class="form-control" style="width: 100%;"><option value="">-- Select --</option>${optionsHtml}</select></div>
-                    <div style="margin-bottom: 6px;"><label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry Open:</label><select id="sel-grill_fry_open" class="form-control" style="width: 100%;"><option value="">-- Select --</option>${optionsHtml}</select></div>
-                    <button class="btn btn-primary" style="width: 100%; margin-top: 4px;" onclick="assignCooksGroup(['sel-range_open', 'sel-mid_open', 'sel-grill_fry_open'])">Assign 3-Cook Line 📌</button>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
+                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
+                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
+                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
+                    </select>
                 </div>
-                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #c2410c; margin-top: 0;">🌙 Night Closing Line</h4>
-                    <div style="margin-bottom: 8px;"><label style="font-size: 0.85rem; font-weight: bold;">Range / Mid-Split Close:</label><select id="sel-range_mid_split_close" class="form-control" style="width: 100%;"><option value="">-- Select Closer --</option>${optionsHtml}</select></div>
-                    <div style="margin-bottom: 8px;"><label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry / Mid-Split Close:</label><select id="sel-grill_fry_mid_split_close" class="form-control" style="width: 100%;"><option value="">-- Select Closer --</option>${optionsHtml}</select></div>
-                    <button class="btn btn-primary" style="width: 100%; background: #c2410c; border-color: #c2410c; margin-top: 8px;" onclick="assignCooksGroup(['sel-range_mid_split_close', 'sel-grill_fry_mid_split_close'])">Assign Closing Line 📌</button>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
                 </div>
             </div>
-        </div>`;
+        </div>
+    `;
 }
 
+function assignManagerShift() {
+    const empSelect = document.getElementById('sel-mod-employee');
+    const typeSelect = document.getElementById('sel-mod-type');
+    
+    if (!empSelect || !empSelect.value || !typeSelect || !typeSelect.value) {
+        alert("Please select both a manager and a checklist type.");
+        return;
+    }
+
+    const empId = empSelect.value;
+    const checklistKey = typeSelect.value;
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) return;
+
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const spec = MANAGER_CHECKLIST_SPECS[checklistKey];
+    const taskItemsText = spec && spec.items && spec.items['en'] ? spec.items['en'] : [];
+    const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
+
+    const initialManagerShift = {
+        id: `MOD-SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        empId: emp.id || emp.ID,
+        empName: emp.name || emp.Name,
+        role: 'MANAGER',
+        station: spec.title,
+        date: todayStr,
+        tasksCompleted: 0,
+        totalTasks: serializedTasks.length,
+        scorePct: 0,
+        status: "Pending Review",
+        notes: JSON.stringify(serializedTasks),
+        managerSignOff: false,
+        tasks: serializedTasks,
+        EmpId: emp.id || emp.ID,
+        EmpName: emp.name || emp.Name,
+        ScorePct: 0,
+        TotalTasks: serializedTasks.length,
+        TasksCompleted: 0
+    };
+
+    Store.shifts.push(initialManagerShift);
+    ApiService.request('saveShift', { shift: initialManagerShift }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${spec.title}! It is now visible on their dashboard.`);
+            if (typeof renderGMDashboard === 'function') renderGMDashboard();
+        } else {
+            alert("⚠️ Failed to sync manager shift record to cloud.");
+        }
+    });
+}
 function renderSpecialProjectWidget() {
     const container = document.getElementById('special-project-widget-container');
     if (!container) return;
@@ -2282,19 +2391,17 @@ function openShiftChecklistModal(shiftId) {
     if (!modalBody) return;
 
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
-    const isManagerRole = Store.role === 'manager';
     const isGMRole = Store.role === 'gm';
-    
     const roleStr = String(shift.role || shift.Role || "").toUpperCase();
     const isManagerShift = roleStr === 'MANAGER';
 
     // PERMISSION LOGIC:
     // - Cook Shifts: Both Managers and GM can score and sign off.
-    // - Manager Shifts: ONLY the General Manager can score and sign off. Managers view as READ-ONLY.
+    // - Manager Shifts: ONLY the General Manager has audit-level scoring and sign-off clearance.
     let canEdit = false;
     if (!isSignedOff) {
         if (!isManagerShift) {
-            canEdit = isManagerRole || isGMRole;
+            canEdit = Store.role === 'manager' || isGMRole;
         } else {
             canEdit = isGMRole;
         }
@@ -2356,7 +2463,7 @@ function openShiftChecklistModal(shiftId) {
             <div><span style="font-size: 0.8rem; color: #64748b;">Tier Status:</span><br><strong id="modal-live-status">${initialTier}</strong></div>
         </div>
 
-        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Checklist Audit Items ${!canEdit ? '(Read-Only View)' : '(Interactive Scoring)'}</h4>
+        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Checklist Audit Items ${!canEdit ? '(Read-Only View)' : '(GM Audit Scoring)'}</h4>
         <div style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; background: #ffffff;">
             ${tasksListHTML}
         </div>
@@ -2365,7 +2472,7 @@ function openShiftChecklistModal(shiftId) {
             <button class="btn btn-secondary" onclick="closeShiftChecklistModal(); UIController.refreshActiveView();">Close</button>
             ${isSignedOff ? 
                 '<span style="color: #166534; font-weight: bold; align-self: center;">✅ Signed Off</span>' : 
-                (canEdit ? `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal(); UIController.refreshActiveView();">Sign Off Shift ✍️</button>` : '<span style="color: #64748b; font-size: 0.85rem; align-self: center;">🔒 Read-Only (Requires GM Access for Manager Audits)</span>')
+                (canEdit ? `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal(); UIController.refreshActiveView();">Sign Off Shift ✍️</button>` : '<span style="color: #64748b; font-size: 0.85rem; align-self: center;">🔒 Read-Only (Restricted to General Manager)</span>')
             }
         </div>
     `;
