@@ -77,13 +77,13 @@ const UIController = {
         
         if (id === 'manager-dashboard') {
             renderManagerDashboard();
-            renderManagerAssignmentWidget(); // Restored cook assignment widget for managers
+            renderManagerAssignmentWidget(); // Renders the cook assignment tool for regular managers
         }
         
         if (id === 'gm-dashboard') {
             renderGMDashboard();
-            renderManagerAssignmentWidget(); // Cook assignment for GM if needed
-            renderGMManagerAssignmentWidget(); // MOD assignment exclusively for GM
+            renderManagerAssignmentWidget();      // Renders the cook assignment tool for GM
+            renderGMManagerAssignmentWidget();  // Renders the MOD assignment tool exclusively for GM
         }
         
         if (id === 'cook-training') renderTrainingView();
