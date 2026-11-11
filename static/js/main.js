@@ -460,25 +460,30 @@ const MANAGER_CHECKLIST_SPECS = {
 };
 
 function renderManagerAssignmentWidget(targetId) {
-    // Auto-detect target container if none is explicitly passed
     if (!targetId) {
         const activeView = document.querySelector('.app-view.active');
-        if (activeView && activeView.id === 'view-gm-dashboard') {
-            targetId = 'gm-cook-widget-box';
-        } else {
-            targetId = 'mgr-cook-widget-box';
-        }
+        targetId = (activeView && activeView.id === 'view-gm-dashboard') ? 'gm-cook-widget-box' : 'mgr-cook-widget-box';
     }
 
     const container = document.getElementById(targetId);
     if (!container) return;
 
-    const cooks = Store.employees.filter(e => {
+    // Fallback: if employee array is empty or filtering is too strict, show all staff members
+    let cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
     });
+    if (cooks.length === 0) {
+        cooks = Store.employees;
+    }
 
-    const stations = ["Range Open", "Mid Open", "Grill/Fry Open", "Range/Mid-Split Open", "Grill/Fry/Mid-Split Open"];
+    const stations = [
+        { key: "range_open", label: "Range Open" },
+        { key: "mid_open", label: "Mid Open" },
+        { key: "grill_fry_open", label: "Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" }
+    ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
@@ -488,23 +493,87 @@ function renderManagerAssignmentWidget(targetId) {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem;">Select Team Member:</label>
-                    <select id="sel-cook-employee" class="form-control" style="margin-top: 5px;">
-                        <option value="">-- Choose Cook --</option>
-                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || 'Cook'})</option>`).join('')}
+                    <select id="sel-cook-employee-${targetId}" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Team Member --</option>
+                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || c.Role || 'Staff'})</option>`).join('')}
                     </select>
                 </div>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem;">Assigned Station:</label>
-                    <select id="sel-cook-station" class="form-control" style="margin-top: 5px;">
-                        ${stations.map(st => `<option value="${st}">${st}</option>`).join('')}
+                    <select id="sel-cook-station-${targetId}" class="form-control" style="margin-top: 5px;">
+                        ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
                     </select>
                 </div>
                 <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift()">Assign Cook Shift 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('${targetId}')">Assign Cook Shift 🚀</button>
                 </div>
             </div>
         </div>
     `;
+}
+
+function assignCookShift(targetId = 'mgr-cook-widget-box') {
+    const empSelect = document.getElementById(`sel-cook-employee-${targetId}`);
+    const stationSelect = document.getElementById(`sel-cook-station-${targetId}`);
+
+    if (!empSelect || !empSelect.value || !stationSelect || !stationSelect.value) {
+        alert("Please select both a team member and an assigned station.");
+        return;
+    }
+
+    const empId = empSelect.value;
+    const stationKey = stationSelect.value;
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Selected employee record not found.");
+        return;
+    }
+
+    emp.station = stationKey;
+    emp.Station = stationKey;
+
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const stationSpec = CHECKLIST_SPECS[stationKey];
+    const taskItemsText = (stationSpec && stationSpec.items && stationSpec.items['en']) ? stationSpec.items['en'] : [];
+    const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
+
+    const initialShift = {
+        id: `SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        empId: emp.id || emp.ID,
+        empName: emp.name || emp.Name,
+        role: emp.role || emp.Role || 'cook',
+        station: stationKey.replace(/_/g, ' ').toUpperCase(),
+        date: todayStr,
+        tasksCompleted: 0,
+        totalTasks: serializedTasks.length || 15,
+        scorePct: 0,
+        status: "Pending Review",
+        notes: JSON.stringify(serializedTasks),
+        managerSignOff: false,
+        tasks: serializedTasks,
+        EmpId: emp.id || emp.ID,
+        EmpName: emp.name || emp.Name,
+        ScorePct: 0,
+        TotalTasks: serializedTasks.length || 15,
+        TasksCompleted: 0
+    };
+
+    Store.shifts.push(initialShift);
+
+    Promise.all([
+        ApiService.request('saveEmployee', { employee: emp }),
+        ApiService.request('saveShift', { shift: initialShift })
+    ]).then(() => {
+        alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${stationKey.replace(/_/g, ' ').toUpperCase()}!`);
+        loadGlobalAppData();
+    }).catch(err => {
+        console.error("Error assigning cook shift:", err);
+        alert("⚠️ Assignment saved locally, but cloud sync encountered an issue.");
+    });
 }
 function renderGMManagerAssignmentWidget(targetId = 'gm-mod-widget-box') {
     const container = document.getElementById(targetId);
