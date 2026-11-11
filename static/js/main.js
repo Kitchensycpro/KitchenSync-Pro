@@ -875,7 +875,6 @@ function renderManagerChecklist() {
     const container = document.getElementById('manager-checklist-content');
     if (!container) return;
 
-    // Find if a manager shift is assigned for today for the logged-in user
     const todayStr = (() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -903,14 +902,25 @@ function renderManagerChecklist() {
         return;
     }
 
-    // Extract tasks from assigned shift
-    let rawTasks = assignedShift.tasks || assignedShift.Tasks || [];
-    if (!rawTasks && assignedShift.notes && typeof assignedShift.notes === 'string' && assignedShift.notes.startsWith('[')) {
-        try { rawTasks = JSON.parse(assignedShift.notes); } catch(e) { rawTasks = []; }
+    // Retrieve tasks correctly from assigned shift or specifications
+    let tasks = assignedShift.tasks || assignedShift.Tasks || [];
+    if (!tasks || tasks.length === 0) {
+        if (assignedShift.notes && typeof assignedShift.notes === 'string' && assignedShift.notes.startsWith('[')) {
+            try { tasks = JSON.parse(assignedShift.notes); } catch(e) { tasks = []; }
+        }
+    }
+    
+    // Fallback lookup from MANAGER_CHECKLIST_SPECS if tasks array is empty
+    if ((!tasks || tasks.length === 0) && assignedShift.station) {
+        const matchingKey = Object.keys(MANAGER_CHECKLIST_SPECS).find(k => MANAGER_CHECKLIST_SPECS[k].title === assignedShift.station);
+        if (matchingKey && MANAGER_CHECKLIST_SPECS[matchingKey].items && MANAGER_CHECKLIST_SPECS[matchingKey].items['en']) {
+            tasks = MANAGER_CHECKLIST_SPECS[matchingKey].items['en'].map(tText => ({ label: tText, completed: false, checked: false }));
+        }
     }
 
-    const tasksListHTML = rawTasks.map((t, idx) => {
-        const isChecked = t.completed || t.checked;
+    const tasksListHTML = tasks.map((t, idx) => {
+        const isChecked = t.completed || t.checked || t.Completed || t.Checked;
+        const taskText = typeof t === 'string' ? t : (t.label || t.text || t.Name || '');
         return `
             <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                 <input type="checkbox" 
@@ -918,57 +928,33 @@ function renderManagerChecklist() {
                        ${isChecked ? 'checked' : ''} 
                        disabled>
                 <div style="flex: 1;">
-                    <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${t.label || t.text}</span>
+                    <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${taskText}</span>
                 </div>
             </div>
         `;
     }).join('');
 
+    const shiftTitle = assignedShift.station || assignedShift.Station || 'Manager Operational Checklist';
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <div>
-                    <h3 style="color: #1e3a8a; margin: 0;">📋 Assigned MOD Shift: ${assignedShift.station || assignedShift.Station || 'Manager Checklist'}</h3>
-                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Date: ${assignedShift.date || assignedShift.Date} | Status: <strong>${assignedShift.status || 'Pending Review'}</strong> (Read-Only Reference)</p>
+                    <h3 style="color: #1e3a8a; margin: 0;">📋 Assigned MOD Shift: ${shiftTitle}</h3>
+                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Date: ${assignedShift.date || assignedShift.Date} | Status: <strong>${assignedShift.status || 'Pending Review'}</strong></p>
                 </div>
                 <div>
                     <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only MOD View</span>
                 </div>
             </div>
             
-            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; background: #ffffff;">
+            <div style="max-height: 450px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; background: #ffffff;">
                 ${tasksListHTML}
             </div>
         </div>
     `;
 }
-function switchManagerChecklistView(checklistKey) {
-    const activeViewContainer = document.getElementById('manager-checklist-active-view');
-    if (!activeViewContainer) return;
 
-    const spec = MANAGER_CHECKLIST_SPECS[checklistKey];
-    if (!spec) return;
-
-    const items = spec.items['en'] || [];
-
-    activeViewContainer.innerHTML = `
-        <div class="card">
-            <h4 style="color: #1e3a8a; margin-top: 0;">${spec.title}</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Review daily operating procedures and standard requirements below.</p>
-            
-            <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 10px;">
-                ${items.map((taskText, idx) => `
-                    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
-                        <input type="checkbox" style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" disabled>
-                        <div style="flex: 1;">
-                            <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${idx + 1}. ${taskText}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
 function updateGreetingLabel() {
     const label = document.getElementById('logged-in-user-label');
     if (label && Store.user) {
@@ -2074,7 +2060,6 @@ function renderGMDashboard() {
     const endDate = new Date(startDate); 
     endDate.setDate(endDate.getDate() + 13);
     
-    // Robust cycle shift filter ignoring trailing timestamps
     const cycleShifts = Store.shifts.filter(s => { 
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return false;
@@ -2082,9 +2067,7 @@ function renderGMDashboard() {
         return d >= startDate && d <= endDate; 
     });
 
-    // Separate cook shifts vs manager operational shifts for reporting
     const cookShifts = cycleShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
-    const managerShiftsCycle = cycleShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
     
     const dailyCompliance = {};
     for (let i = 0; i < 14; i++) {
@@ -2124,7 +2107,6 @@ function renderGMDashboard() {
         }
     });
 
-    // Ensure Store.selectedShiftDate defaults to today if uninitialized
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = (() => {
             const d = new Date();
@@ -2134,7 +2116,6 @@ function renderGMDashboard() {
 
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Filter shifts for the selected lookup date
     const filteredShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
         if (!rawDate) return true;
@@ -2167,7 +2148,7 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- Manager Assignment Widget Container for Opening/Closing checklists -->
+        <!-- MANAGER ON DUTY ASSIGNMENT WIDGET IN GM SUITE -->
         <div id="manager-assignment-widget-container" style="margin-bottom: 1.5rem;"></div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -2178,132 +2159,6 @@ function renderGMDashboard() {
                     return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 35px; height: 100%; justify-content: flex-end;"><span style="font-size: 0.7rem; font-weight: bold; color: #1e3a8a; margin-bottom: 4px;">${avg}%</span><div style="width: 100%; background: #2563eb; border-radius: 4px 4px 0 0; height: Math.max(avg,5)%;"></div><span style="font-size:0.65rem;color:#64748b;margin-top:6px;transform:rotate(-35deg);">${date.slice(5)}</span></div>`;
                 }).join('')}
             </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-            <div class="card">
-                <h4 style="color: #1e3a8a; margin-top: 0;">🥧 Bonus Tier Allocation Distribution</h4>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 1.5rem;">
-                    <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #ca8a04;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Gold Tier (13-15 tasks):</span> <span>${goldCount} Employee(s)</span></div></div>
-                    <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #64748b;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Silver Tier (10-12 tasks):</span> <span>${silverCount} Employee(s)</span></div></div>
-                    <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 4px solid #b45309;"><div style="display: flex; justify-content: space-between; font-weight: bold;"><span>Bronze Tier (8-9 tasks):</span> <span>${bronzeCount} Employee(s)</span></div></div>
-                </div>
-            </div>
-            <div class="card" id="bonus-accounting-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                    <h4 style="color: #1e3a8a; margin: 0;">📑 Bonus Program Accounting Sheet</h4>
-                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.85rem;" onclick="window.print()">🖨️ Print Payout Report</button>
-                </div>
-                <div style="max-height: 240px; overflow-y: auto;">
-                    <table class="data-table" style="width: 100%;">
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Shifts</th>
-                                <th>Avg Score</th>
-                                <th>Tier</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${accountingRows.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No employees have met thresholds.</td></tr>` : accountingRows.join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
-        
-        <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
-            <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
-            <table class="data-table" style="width: 100%; margin-top: 1rem;">
-                <thead>
-                    <tr>
-                        <th>Employee</th>
-                        <th>Assigned Project / Task</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => {
-                        const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "");
-                        const isSignedOff = statusStr.toLowerCase().includes("signed off");
-
-                        return `
-                            <tr>
-                                <td><strong>${e.name || e.Name}</strong></td>
-                                <td>${e.specialProject || e.SpecialProject}</td>
-                                <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr || 'Pending Review'}</span></td>
-                                <td>
-                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button>`}
-                                </td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- MANAGER OPERATIONAL CHECKLISTS AUDITS TABLE -->
-        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Operational Checklist Audits (Opening / Closing)</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Review and audit Manager on Duty (MOD) opening and closing checklists.</p>
-            <table class="data-table" style="width: 100%; margin-top: 1rem;">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Manager Name</th>
-                        <th>Checklist Type</th>
-                        <th>Score</th>
-                        <th>Tier Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${filteredManagerShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">No manager checklist audits assigned for ${lookupDate}.</td></tr>` : filteredManagerShifts.map(s => {
-                        const sDate = s.date || s.Date || '';
-                        const sName = s.empName || s.EmpName || 'Manager';
-                        const sStation = s.station || s.Station || 'Manager Checklist';
-                        
-                        let tasks = s.tasks || s.Tasks || [];
-                        if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
-                            try { tasks = JSON.parse(s.notes); } catch(e) {}
-                        }
-                        const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
-                        const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
-
-                        let sScore = Number(s.scorePct || s.ScorePct || 0);
-                        if (sScore === 0 && totalTasks > 0 && tasksCompleted > 0) {
-                            sScore = Math.round((tasksCompleted / totalTasks) * 100);
-                        }
-
-                        let sTier = s.status || s.Status || '';
-                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review' || sScore > 0) {
-                            if (tasksCompleted >= 13) sTier = "Gold 🥇";
-                            else if (tasksCompleted >= 10) sTier = "Silver 🥈";
-                            else if (tasksCompleted >= 8) sTier = "Bronze 🥉";
-                            else sTier = "Needs Improvement ⚠️";
-                        }
-
-                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true';
-                        const sId = s.id || s.ID || '';
-
-                        return `
-                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;" title="Click to audit manager checklist">
-                                <td>${sDate}</td>
-                                <td><strong>${sName}</strong></td>
-                                <td>${sStation}</td>
-                                <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
-                                <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
-                                <td onclick="event.stopPropagation()">
-                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
-                                </td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
         </div>
 
         <!-- TEAM COOK SHIFT AUDITS TABLE -->
@@ -2362,6 +2217,67 @@ function renderGMDashboard() {
                                 <td>${sDate}</td>
                                 <td><strong>${sName}</strong></td>
                                 <td>${sRole}</td>
+                                <td>${sStation}</td>
+                                <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
+                                <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
+                                <td onclick="event.stopPropagation()">
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MANAGER SHIFT AUDITS SECTION (GM DASHBOARD ONLY) - INTERACTIVE SCORING -->
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Shift Audits (MOD Oversight)</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Review, score, and audit Manager on Duty (MOD) opening and closing checklists.</p>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Manager Name</th>
+                        <th>Checklist Type</th>
+                        <th>Score</th>
+                        <th>Tier Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredManagerShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">No manager checklist audits assigned for ${lookupDate}.</td></tr>` : filteredManagerShifts.map(s => {
+                        const sDate = s.date || s.Date || '';
+                        const sName = s.empName || s.EmpName || 'Manager';
+                        const sStation = s.station || s.Station || 'Manager Checklist';
+                        
+                        let tasks = s.tasks || s.Tasks || [];
+                        if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
+                            try { tasks = JSON.parse(s.notes); } catch(e) {}
+                        }
+                        const totalTasks = Number(s.totalTasks || s.TotalTasks || tasks.length || 15);
+                        const tasksCompleted = Number(s.tasksCompleted || s.TasksCompleted || tasks.filter(t => t.completed || t.checked).length);
+
+                        let sScore = Number(s.scorePct || s.ScorePct || 0);
+                        if (sScore === 0 && totalTasks > 0 && tasksCompleted > 0) {
+                            sScore = Math.round((tasksCompleted / totalTasks) * 100);
+                        }
+
+                        let sTier = s.status || s.Status || '';
+                        if (!sTier || sTier === 'Completed' || sTier === 'Needs Review' || sTier === 'Pending Review' || sScore > 0) {
+                            if (tasksCompleted >= 13) sTier = "Gold 🥇";
+                            else if (tasksCompleted >= 10) sTier = "Silver 🥈";
+                            else if (tasksCompleted >= 8) sTier = "Bronze 🥉";
+                            else sTier = "Needs Improvement ⚠️";
+                        }
+
+                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true';
+                        const sId = s.id || s.ID || '';
+
+                        return `
+                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;" title="Click to open GM scoring & audit modal">
+                                <td>${sDate}</td>
+                                <td><strong>${sName}</strong></td>
                                 <td>${sStation}</td>
                                 <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
                                 <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
