@@ -467,7 +467,6 @@ function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
 
-    // Filter employees who are Managers or GMs
     const managers = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
@@ -475,8 +474,8 @@ function renderManagerAssignmentWidget() {
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Manager on Duty (MOD) Shift Assignment</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign managers to Opening or Closing checklists for GM audit and scoring.</p>
+            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
@@ -494,13 +493,12 @@ function renderManagerAssignmentWidget() {
                     </select>
                 </div>
                 <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign & Generate Audit 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
                 </div>
             </div>
         </div>
     `;
 }
-
 function assignManagerShift() {
     const empSelect = document.getElementById('sel-mod-employee');
     const typeSelect = document.getElementById('sel-mod-type');
@@ -2280,38 +2278,52 @@ function openShiftChecklistModal(shiftId) {
         return;
     }
 
-    const modalBody = document.getElementById('shift-modal-body');
+    const modalBody = document.getElementById('shift-modal-overlay');
+    if (!modalBody) return;
+
     const isSignedOff = shift.managerSignOff === true || String(shift.managerSignOff).toLowerCase() === 'true';
+    const isManagerRole = Store.role === 'manager';
+    const isGMRole = Store.role === 'gm';
+    
+    const roleStr = String(shift.role || shift.Role || "").toUpperCase();
+    const isManagerShift = roleStr === 'MANAGER';
 
-    const employee = Store.employees.find(e => String(e.id || e.ID) === String(shift.empId || shift.EmpId || shift.EMPID));
-    const specialProjectName = employee ? (employee.specialProject || employee.SpecialProject || "") : "";
-    const specialProjectStatus = employee ? (employee.specialProjectStatus || employee.SpecialProjectStatus || "None Assigned") : "None Assigned";
-    const empId = employee ? (employee.id || employee.ID) : "";
+    // PERMISSION LOGIC:
+    // - Cook Shifts: Both Managers and GM can score and sign off.
+    // - Manager Shifts: ONLY the General Manager can score and sign off. Managers view as READ-ONLY.
+    let canEdit = false;
+    if (!isSignedOff) {
+        if (!isManagerShift) {
+            canEdit = isManagerRole || isGMRole;
+        } else {
+            canEdit = isGMRole;
+        }
+    }
 
-    // Robustly parse tasks array from shift object or notes
     let rawTasks = shift.tasks || shift.Tasks || shift.checklistItems || shift.Items || shift.items;
     if (!rawTasks && shift.notes && typeof shift.notes === 'string' && shift.notes.startsWith('[')) {
         try { rawTasks = JSON.parse(shift.notes); } catch (e) { rawTasks = []; }
     }
 
-    // Normalize tasks into clean objects with explicit boolean check flags
     let tasks = Array.isArray(rawTasks) ? rawTasks.map(t => {
         const label = typeof t === 'string' ? t : (t.label || t.name || t.text || '');
         const isDone = t.completed === true || t.checked === true || String(t.status).toLowerCase() === 'completed';
         return { label: label, completed: isDone, checked: isDone };
     }) : [];
 
-    shift.tasks = tasks; // Ensure shift.tasks reference is uniform
+    shift.tasks = tasks;
 
     let tasksListHTML = "";
     if (tasks.length > 0) {
         tasksListHTML = tasks.map((t, idx) => {
             const isChecked = t.completed || t.checked;
+            const isDisabled = !canEdit;
             return `
                 <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                     <input type="checkbox" 
-                           style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;" 
+                           style="width: 18px; height: 18px; margin-top: 2px; cursor: ${isDisabled ? 'not-allowed' : 'pointer'};" 
                            ${isChecked ? 'checked' : ''} 
+                           ${isDisabled ? 'disabled' : ''}
                            onchange="toggleShiftTaskAudit('${shift.id || shift.ID}', ${idx}, this.checked)">
                     <div style="flex: 1;">
                         <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">${t.label}</span>
@@ -2320,71 +2332,45 @@ function openShiftChecklistModal(shiftId) {
             `;
         }).join('');
     } else {
-        tasksListHTML = `
-            <div style="padding: 15px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
-                <p style="margin: 0;">No individual line-item tasks were found attached to this summary record.</p>
-            </div>
-        `;
+        tasksListHTML = `<div style="padding: 15px; text-align: center; color: #64748b;">No checklist tasks found.</div>`;
     }
 
-    let specialProjectHTML = "";
-    if (specialProjectName) {
-        const isProjectSignedOff = specialProjectStatus.toLowerCase().includes("signed off");
-        specialProjectHTML = `
-            <div style="background: #fdf8f6; border: 1px solid #fed7aa; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                <h4 style="color: #c2410c; margin: 0 0 5px 0; font-size: 0.95rem;">🛠️ Assigned Special Project</h4>
-                <p style="margin: 0 0 8px 0; font-size: 0.9rem; color: #1e293b;"><strong>Task:</strong> ${specialProjectName}</p>
-                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
-                    <span>Status: <strong style="color: ${isProjectSignedOff ? '#166534' : '#c2410c'};">${specialProjectStatus}</strong></span>
-                    ${isProjectSignedOff ? 
-                        '<span style="color: #166534; font-weight: bold;">✅ Project Signed Off</span>' : 
-                        `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${empId}'); openShiftChecklistModal('${shift.id || shift.ID}');">Sign Off Project ✍️</button>`
-                    }
-                </div>
-            </div>
-        `;
-    }
-
-    // Calculate current scores based on active checklist state
     const totalTasks = tasks.length;
     const completedCount = tasks.filter(t => t.completed || t.checked).length;
     const currentScore = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
     const pointsEarned = completedCount * 10;
-    const totalPointsPossible = totalTasks * 10;
 
     let initialTier = "Needs Improvement ⚠️";
     if (completedCount >= 13) initialTier = "Gold 🥇";
     else if (completedCount >= 10) initialTier = "Silver 🥈";
     else if (completedCount >= 8) initialTier = "Bronze 🥉";
 
-    modalBody.innerHTML = `
+    document.getElementById('shift-modal-body').innerHTML = `
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Interactive Shift & Project Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
-            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Station: <strong>${shift.station || shift.Station || 'General'}</strong> | Date: ${shift.date || shift.Date}</p>
+            <h3 style="color: #1e3a8a; margin: 0 0 5px 0;">📋 Shift Audit: ${shift.empName || shift.EmpName || 'Staff'}</h3>
+            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Role: <strong>${shift.role || 'Staff'}</strong> | Station/Type: <strong>${shift.station || shift.Station || 'General'}</strong> | Date: ${shift.date || shift.Date}</p>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;" id="modal-score-summary">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 6px;">
             <div><span style="font-size: 0.8rem; color: #64748b;">Completion Score:</span><br><strong id="modal-live-score">${currentScore}% (${completedCount}/${totalTasks} tasks | ${pointsEarned} pts)</strong></div>
             <div><span style="font-size: 0.8rem; color: #64748b;">Tier Status:</span><br><strong id="modal-live-status">${initialTier}</strong></div>
         </div>
 
-        ${specialProjectHTML}
-
-        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Manager Audit Checklist (Check items completed by cook)</h4>
+        <h4 style="color: #1e3a8a; margin-bottom: 8px;">Checklist Audit Items ${!canEdit ? '(Read-Only View)' : '(Interactive Scoring)'}</h4>
         <div style="max-height: 250px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 10px; margin-bottom: 15px; background: #ffffff;">
             ${tasksListHTML}
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-            <button class="btn btn-secondary" onclick="closeShiftChecklistModal(); renderManagerDashboard(); renderGMDashboard();">Close & Refresh</button>
+            <button class="btn btn-secondary" onclick="closeShiftChecklistModal(); UIController.refreshActiveView();">Close</button>
             ${isSignedOff ? 
-                '<span style="color: #166534; font-weight: bold; align-self: center;">✅ Already Signed Off</span>' : 
-                `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal();">Sign Off Shift ✍️</button>`
+                '<span style="color: #166534; font-weight: bold; align-self: center;">✅ Signed Off</span>' : 
+                (canEdit ? `<button class="btn btn-primary" onclick="managerSignOffShift('${shift.id || shift.ID}'); closeShiftChecklistModal(); UIController.refreshActiveView();">Sign Off Shift ✍️</button>` : '<span style="color: #64748b; font-size: 0.85rem; align-self: center;">🔒 Read-Only (Requires GM Access for Manager Audits)</span>')
             }
         </div>
     `;
 
-    document.getElementById('shift-modal-overlay').style.display = 'flex';
+    modalBody.style.display = 'flex';
 }
 function toggleShiftTaskAudit(shiftId, taskIndex, isChecked) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
