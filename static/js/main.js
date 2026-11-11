@@ -1918,10 +1918,13 @@ function renderManagerDashboard() {
     
     const lookupDate = String(Store.selectedShiftDate || "").trim().split('T')[0];
     
-    // Robust date filter isolating YYYY-MM-DD
+    // Robust date filter isolating YYYY-MM-DD, excluding Manager shifts from regular manager view
     const filteredShifts = Store.shifts.filter(s => {
+        const rawRole = String(s.role || s.Role || "").toUpperCase();
+        if (rawRole === 'MANAGER') return false; // Managers view only cook shifts here
+
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
-        if (!rawDate) return true; // Show all shifts if date is missing so nothing gets hidden
+        if (!rawDate) return true; 
         return rawDate.substring(0, 10) === lookupDate;
     });
     
@@ -1972,7 +1975,7 @@ function renderManagerDashboard() {
 
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits</h4>
+                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
                     <input type="date" id="manager-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
@@ -1991,13 +1994,12 @@ function renderManagerDashboard() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => {
+                    ${filteredShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed cook shift records found for ${lookupDate}.</td></tr>` : filteredShifts.map(s => {
                         const sDate = s.date || s.Date || s.DATE || '';
                         const sName = s.empName || s.EmpName || s.EMPNAME || 'Staff';
                         const sRole = String(s.role || s.Role || s.ROLE || '').toUpperCase();
                         const sStation = s.station || s.Station || s.STATION || 'General';
                         
-                        // Parse tasks for dynamic percentage and tier fallback calculations
                         let tasks = s.tasks || s.Tasks || [];
                         if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
                             try { tasks = JSON.parse(s.notes); } catch(e) {}
@@ -2041,7 +2043,7 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
-    renderManagerAssignmentWidget();
+    // Intentionally omitted renderManagerAssignmentWidget() so regular managers cannot assign MOD shifts
     renderSpecialProjectWidget();
 }
 function handleShiftCalendarLookup(dateVal) {
