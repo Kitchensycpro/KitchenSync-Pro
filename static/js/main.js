@@ -58,7 +58,7 @@ const ApiService = {
 const UIController = {
     init() {
         const today = new Date().toISOString().split('T')[0];
-        ['shift-date', 'cook-shift-date', 'gm-calendar-lookup-date'].forEach(id => {
+        ['shift-date', 'cook-shift-date', 'gm-calendar-lookup-date', 'manager-calendar-lookup-date'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = today;
         });
@@ -74,18 +74,12 @@ const UIController = {
             else renderCookChecklistGated();
         }
         if (id === 'cook-dashboard') renderCookDashboard();
-        
         if (id === 'manager-dashboard') {
             renderManagerDashboard();
-            renderManagerAssignmentWidget(); // Renders the cook assignment tool for regular managers
         }
-        
         if (id === 'gm-dashboard') {
             renderGMDashboard();
-            renderManagerAssignmentWidget();      // Renders the cook assignment tool for GM
-            renderGMManagerAssignmentWidget();  // Renders the MOD assignment tool exclusively for GM
         }
-        
         if (id === 'cook-training') renderTrainingView();
         if (id === 'recipe-book') renderRecipeBook();
         if (id === 'roster') renderRosterView();
@@ -465,7 +459,17 @@ const MANAGER_CHECKLIST_SPECS = {
     }
 };
 
-function renderManagerAssignmentWidget(targetId = 'mgr-cook-widget-box') {
+function renderManagerAssignmentWidget(targetId) {
+    // Auto-detect target container if none is explicitly passed
+    if (!targetId) {
+        const activeView = document.querySelector('.app-view.active');
+        if (activeView && activeView.id === 'view-gm-dashboard') {
+            targetId = 'gm-cook-widget-box';
+        } else {
+            targetId = 'mgr-cook-widget-box';
+        }
+    }
+
     const container = document.getElementById(targetId);
     if (!container) return;
 
