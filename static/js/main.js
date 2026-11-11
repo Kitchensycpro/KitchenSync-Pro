@@ -465,13 +465,9 @@ const MANAGER_CHECKLIST_SPECS = {
     }
 };
 
-function renderManagerAssignmentWidget() {
-    const containers = [
-        document.getElementById('cook-assignment-widget-container'),
-        document.getElementById('cook-assignment-widget-container-gm')
-    ].filter(Boolean);
-
-    if (containers.length === 0) return;
+function renderManagerAssignmentWidget(targetId = 'mgr-cook-widget-box') {
+    const container = document.getElementById(targetId);
+    if (!container) return;
 
     const cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
@@ -480,7 +476,7 @@ function renderManagerAssignmentWidget() {
 
     const stations = ["Range Open", "Mid Open", "Grill/Fry Open", "Range/Mid-Split Open", "Grill/Fry/Mid-Split Open"];
 
-    const widgetHTML = `
+    container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
@@ -505,11 +501,9 @@ function renderManagerAssignmentWidget() {
             </div>
         </div>
     `;
-
-    containers.forEach(c => c.innerHTML = widgetHTML);
 }
-function renderGMManagerAssignmentWidget() {
-    const container = document.getElementById('gm-manager-assignment-widget-container');
+function renderGMManagerAssignmentWidget(targetId = 'gm-mod-widget-box') {
+    const container = document.getElementById(targetId);
     if (!container) return;
 
     if (!Store.role || String(Store.role).toLowerCase() !== 'gm') {
@@ -2003,6 +1997,8 @@ function renderManagerDashboard() {
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
         </div>
+
+        <div id="mgr-cook-widget-box"></div>
         <div id="special-project-widget-container"></div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
@@ -2106,6 +2102,7 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
+    renderManagerAssignmentWidget('mgr-cook-widget-box');
     renderSpecialProjectWidget();
 }
 function handleShiftCalendarLookup(dateVal) {
