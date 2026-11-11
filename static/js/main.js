@@ -2065,17 +2065,54 @@ function renderManagerDashboard() {
         return proj !== "" && (status.includes("pending") || status.includes("completed"));
     });
 
+    // Get active cooks for the assignment dropdown inline
+    let cooks = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
+    });
+    if (cooks.length === 0) cooks = Store.employees;
+
+    const stations = [
+        { key: "range_open", label: "Range Open" },
+        { key: "mid_open", label: "Mid Open" },
+        { key: "grill_fry_open", label: "Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" }
+    ];
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
         </div>
 
-        <!-- SPECIAL PROJECT WIDGET FIRST -->
+        <!-- SPECIAL PROJECT WIDGET -->
         <div id="special-project-widget-container"></div>
 
-        <!-- MANAGER COOK ASSIGNMENT WIDGET PLACED BELOW SPECIAL PROJECT WIDGET -->
-        <div id="mgr-cook-widget-box" style="margin-bottom: 1.5rem;"></div>
+        <!-- MANAGER COOK ASSIGNMENT WIDGET (Hardcoded directly into the DOM so it never vanishes) -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Select Team Member:</label>
+                    <select id="sel-cook-employee-mgr-cook-widget-box" class="form-control" style="margin-top: 5px;">
+                        <option value="">-- Choose Team Member --</option>
+                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || c.Role || 'Staff'})</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Assigned Station:</label>
+                    <select id="sel-cook-station-mgr-cook-widget-box" class="form-control" style="margin-top: 5px;">
+                        ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Cook Shift 🚀</button>
+                </div>
+            </div>
+        </div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
             <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
@@ -2179,7 +2216,6 @@ function renderManagerDashboard() {
         
     renderMessageBoard();
     renderSpecialProjectWidget();
-    renderManagerAssignmentWidget('mgr-cook-widget-box');
 }
 function handleShiftCalendarLookup(dateVal) {
     if (!dateVal) return;
