@@ -2071,8 +2071,11 @@ function renderManagerDashboard() {
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
         </div>
 
-        <div id="mgr-cook-widget-box"></div>
+        <!-- SPECIAL PROJECT WIDGET FIRST -->
         <div id="special-project-widget-container"></div>
+
+        <!-- MANAGER COOK ASSIGNMENT WIDGET PLACED BELOW SPECIAL PROJECT WIDGET -->
+        <div id="mgr-cook-widget-box" style="margin-bottom: 1.5rem;"></div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
             <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
@@ -2175,8 +2178,8 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
-    renderManagerAssignmentWidget('mgr-cook-widget-box');
     renderSpecialProjectWidget();
+    renderManagerAssignmentWidget('mgr-cook-widget-box');
 }
 function handleShiftCalendarLookup(dateVal) {
     if (!dateVal) return;
@@ -2241,18 +2244,6 @@ function renderGMDashboard() {
         }
     });
 
-    let bronzeCount = 0, silverCount = 0, goldCount = 0;
-    const accountingRows = [];
-    Object.values(employeeAverages).forEach(data => {
-        let tier = 'None';
-        if (data.avg >= 87) { tier = 'Gold 🥇'; goldCount++; }
-        else if (data.avg >= 67) { tier = 'Silver 🥈'; silverCount++; }
-        else if (data.avg >= 53) { tier = 'Bronze 🥉'; bronzeCount++; }
-        if (tier !== 'None') { 
-            accountingRows.push(`<tr><td><strong>${data.name}</strong></td><td>${data.shiftsCount}</td><td>${data.avg}%</td><td><span style="font-weight:bold;color:#1e3a8a;">${tier}</span></td></tr>`); 
-        }
-    });
-
     if (!Store.selectedShiftDate) {
         Store.selectedShiftDate = (() => {
             const d = new Date();
@@ -2291,7 +2282,10 @@ function renderGMDashboard() {
         <!-- MANAGER ON DUTY ASSIGNMENT WIDGET IN GM SUITE -->
         <div id="gm-mod-widget-box" style="margin-bottom: 1.5rem;"></div>
 
-        <!-- COOK ASSIGNMENT WIDGET IN GM SUITE -->
+        <!-- SPECIAL PROJECT WIDGET IN GM SUITE -->
+        <div id="special-project-widget-container" style="margin-bottom: 1.5rem;"></div>
+
+        <!-- COOK ASSIGNMENT WIDGET PLACED BELOW SPECIAL PROJECT WIDGET -->
         <div id="gm-cook-widget-box" style="margin-bottom: 1.5rem;"></div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -2447,6 +2441,7 @@ function renderGMDashboard() {
         </div>`;
 
     renderGMManagerAssignmentWidget('gm-mod-widget-box');
+    renderSpecialProjectWidget();
     renderManagerAssignmentWidget('gm-cook-widget-box');
 }
 function openShiftChecklistModal(shiftId) {
