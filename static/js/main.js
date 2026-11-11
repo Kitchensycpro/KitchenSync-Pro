@@ -512,7 +512,6 @@ function renderGMManagerAssignmentWidget() {
     const container = document.getElementById('gm-manager-assignment-widget-container');
     if (!container) return;
 
-    // Strict Role Check: Omit entirely if not General Manager
     if (!Store.role || String(Store.role).toLowerCase() !== 'gm') {
         container.innerHTML = '';
         return;
