@@ -68,19 +68,23 @@ const UIController = {
         const view = document.querySelector('.app-view.active');
         if (!view) return;
         const id = view.id.replace('view-', '');
+        
         if (id === 'shift-entry') {
             if (Store.role === 'manager' || Store.role === 'gm') renderManagerChecklist();
             else renderCookChecklistGated();
         }
         if (id === 'cook-dashboard') renderCookDashboard();
+        
         if (id === 'manager-dashboard') {
             renderManagerDashboard();
-            renderManagerAssignmentWidget();
+            // Note: renderManagerAssignmentWidget() is intentionally excluded here so regular managers cannot assign MOD shifts.
         }
+        
         if (id === 'gm-dashboard') {
             renderGMDashboard();
-            renderManagerAssignmentWidget();
+            renderManagerAssignmentWidget(); // Only General Manager has access to assign MOD shifts
         }
+        
         if (id === 'cook-training') renderTrainingView();
         if (id === 'recipe-book') renderRecipeBook();
         if (id === 'roster') renderRosterView();
@@ -88,7 +92,6 @@ const UIController = {
 };
 
 document.addEventListener('DOMContentLoaded', () => UIController.init());
-
 const TRANSLATIONS = {
     en: {
         myChecklist: "📝 Station Checklist", shiftsCompleted: "⭐ Shifts Completed",
@@ -464,6 +467,13 @@ const MANAGER_CHECKLIST_SPECS = {
 };
 
 function renderManagerAssignmentWidget() {
+    // Restrict MOD assignment tool exclusively to the General Manager
+    if (!Store.role || String(Store.role).toLowerCase() !== 'gm') {
+        const container = document.getElementById('manager-assignment-widget-container');
+        if (container) container.innerHTML = '';
+        return;
+    }
+
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
 
@@ -486,7 +496,7 @@ function renderManagerAssignmentWidget() {
                     </select>
                 </div>
                 <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type:</label>
+                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
                     <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
                         <option value="opening_manager">☀️ Opening Manager Checklist</option>
                         <option value="closing_manager">🌙 Closing Manager Checklist</option>
