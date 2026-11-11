@@ -468,10 +468,14 @@ const MANAGER_CHECKLIST_SPECS = {
 };
 
 function renderManagerAssignmentWidget() {
-    const container = document.getElementById('manager-assignment-widget-container');
-    if (!container) return;
+    // Targets both manager and GM cook assignment containers
+    const containers = [
+        document.getElementById('cook-assignment-widget-container'),
+        document.getElementById('cook-assignment-widget-container-gm')
+    ].filter(Boolean);
 
-    // Filter employees who are NOT managers (i.e. Cooks / Staff)
+    if (containers.length === 0) return;
+
     const cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
@@ -479,7 +483,7 @@ function renderManagerAssignmentWidget() {
 
     const stations = ["Range Open", "Mid Open", "Grill/Fry Open", "Range/Mid-Split Open", "Grill/Fry/Mid-Split Open"];
 
-    container.innerHTML = `
+    const widgetHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
@@ -504,6 +508,8 @@ function renderManagerAssignmentWidget() {
             </div>
         </div>
     `;
+
+    containers.forEach(c => c.innerHTML = widgetHTML);
 }
 function renderGMManagerAssignmentWidget() {
     const container = document.getElementById('gm-manager-assignment-widget-container');
