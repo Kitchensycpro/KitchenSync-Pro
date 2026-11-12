@@ -2041,11 +2041,7 @@ function renderCookDashboard() {
     const assignedProject = currentEmployeeRecord.specialProject || currentEmployeeRecord.SpecialProject || Store.user.specialProject || Store.user.SpecialProject || null;
     const projectStatus = currentEmployeeRecord.specialProjectStatus || currentEmployeeRecord.SpecialProjectStatus || Store.user.specialProjectStatus || Store.user.SpecialProjectStatus || "Pending";
 
-    console.log("📋 Resolved Assigned Window:", assignedWindow);
-    console.log("📋 Resolved Assigned Tasks:", assignedTasks);
-    console.log("🛠️ Resolved Assigned Project:", assignedProject);
-
-    // 4. Build Read-Only Special Project Card HTML if assigned (Appears first under station checklist area)
+    // 4. Build Read-Only Special Project Card HTML if assigned
     const projectSectionHtml = assignedProject ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2058,7 +2054,7 @@ function renderCookDashboard() {
         </div>
     ` : '';
 
-    // 5. Build Read-Only Prep Duty Banner HTML if tasks are assigned (Appears second)
+    // 5. Build Read-Only Prep Duty Banner HTML if tasks are assigned
     const prepSectionHtml = assignedWindow && assignedTasks.length > 0 ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2126,7 +2122,7 @@ function renderCookDashboard() {
             </tr>`;
         }).join('');
 
-    // 7. Render complete layout sequence
+    // 7. Render complete layout sequence while preserving the native station checklist container
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Cook Station Checklist & Prep Task List (Read-Only)</h3>
@@ -2136,12 +2132,8 @@ function renderCookDashboard() {
         ${projectSectionHtml}
         ${prepSectionHtml}
 
-        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📋 Active Station Checklist (Read-Only View)</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Your assigned line station tasks are displayed here for shift execution.</p>
-            <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #e2e8f0; color: #64748b; font-size: 0.9rem;">
-                Select your station from your shift assignment above to review operational requirements.
-            </div>
+        <div id="native-station-checklist-wrapper">
+            <!-- Native station checklist elements will render here -->
         </div>
 
         <div class="card" style="margin-top: 2rem; margin-bottom: 1.5rem;">
@@ -2163,6 +2155,14 @@ function renderCookDashboard() {
                 <tbody>${rowsHtml}</tbody>
             </table>
         </div>`;
+
+    // If your application has a secondary renderer function for the station checklist tasks, 
+    // we safely invoke it here so it populates inside #native-station-checklist-wrapper:
+    if (typeof window.renderActiveStationChecklist === 'function') {
+        window.renderActiveStationChecklist();
+    } else if (typeof window.renderStationChecklist === 'function') {
+        window.renderStationChecklist();
+    }
 }
 function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
