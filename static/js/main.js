@@ -956,23 +956,32 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || currentEmp.AssignedPrepWindow || null;
-    let assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || currentEmp.AssignedPrepTasks || [];
+    // Grab Prep Window & Tasks with extensive fallbacks
+    const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || currentEmp.AssignedPrepWindow || Store.user?.AssignedPrepWindow || null;
+    let assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || currentEmp.AssignedPrepTasks || Store.user?.AssignedPrepTasks || [];
     
-    // Safety check if assignedTasks was stored as a JSON string
+    // Safety check if assignedTasks was stored as a JSON string or comma-separated string
     if (typeof assignedTasks === 'string') {
-        try { assignedTasks = JSON.parse(assignedTasks); } catch(e) { assignedTasks = []; }
+        try { 
+            assignedTasks = JSON.parse(assignedTasks); 
+        } catch(e) { 
+            assignedTasks = assignedTasks.split(',').map(t => t.trim()).filter(Boolean);
+        }
     }
 
+    // Grab Special Project & Status
     const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || Store.user?.specialProject || Store.user?.SpecialProject || null;
     const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || Store.user?.specialProjectStatus || Store.user?.SpecialProjectStatus || "Pending";
+
+    // Remove any stale injection cards to prevent duplication
+    container.querySelectorAll('.injected-assignment-card').forEach(el => el.remove());
 
     let assignmentCardsHtml = '';
 
     // 2. Build Special Project Card (Appears First)
     if (assignedProject) {
         assignmentCardsHtml += `
-            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+            <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
                     <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
@@ -987,7 +996,7 @@ function renderCookChecklistGated() {
     // 3. Build Prep Tasks Card (Appears Second)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
-            <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+            <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
                     <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
@@ -1005,20 +1014,16 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 4. Render the assignment cards followed by the native cook checklist items
-    container.innerHTML = `
-        ${assignmentCardsHtml}
-        <div class="card">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📝 Active Station Checklist</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Complete your station tasks for the shift below.</p>
-            <!-- Native checklist tasks container -->
-            <div id="cook-checklist-tasks-container"></div>
-        </div>
-    `;
+    // 4. Trigger the native checklist rendering function first so the task items exist in memory
+    if (typeof window.renderCookChecklist === 'function') {
+        window.renderCookChecklist();
+    } else if (typeof window.renderActiveChecklist === 'function') {
+        window.renderActiveChecklist();
+    }
 
-    // If your app uses a helper to load checklist checklist inputs/items, trigger it here:
-    if (typeof window.renderCookChecklistItems === 'function') {
-        window.renderCookChecklistItems();
+    // 5. Prepend our assignment cards directly to the top of the container without destroying native items
+    if (assignmentCardsHtml) {
+        container.insertAdjacentHTML('afterbegin', assignmentCardsHtml);
     }
 }
 function completeSpecialProject() {
