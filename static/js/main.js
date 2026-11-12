@@ -70,8 +70,11 @@ const UIController = {
         const id = view.id.replace('view-', '');
         
         if (id === 'shift-entry') {
-            if (Store.role === 'manager' || Store.role === 'gm') renderManagerChecklist();
-            else renderCookChecklistGated();
+            if (Store.role === 'manager' || Store.role === 'gm') {
+                renderManagerChecklist();
+            } else {
+                renderCookChecklistGated();
+            }
         }
         if (id === 'cook-dashboard') renderCookDashboard();
         if (id === 'manager-dashboard') {
@@ -83,69 +86,6 @@ const UIController = {
         if (id === 'cook-training') renderTrainingView();
         if (id === 'recipe-book') renderRecipeBook();
         if (id === 'roster') renderRosterView();
-
-        // --- AUTOMATIC ASSIGNMENT INJECTOR FOR COOKS ---
-        if (Store.role !== 'manager' && Store.role !== 'gm') {
-            const targetView = document.getElementById('view-shift-entry') || document.getElementById('view-cook-dashboard');
-            if (targetView) {
-                // Remove stale cards to prevent duplication
-                targetView.querySelectorAll('.injected-assignment-card').forEach(el => el.remove());
-
-                // Find employee assignments
-                const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || "").trim();
-                const cookName = String(Store.user?.name || Store.user?.Name || "").trim().toLowerCase();
-                const currentEmp = Store.employees.find(e => {
-                    const eId = String(e.id || e.ID || "").trim();
-                    const eName = String(e.name || e.Name || "").trim().toLowerCase();
-                    return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
-                }) || {};
-
-                const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || null;
-                const assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || [];
-                const assignedProject = currentEmp.specialProject || Store.user?.specialProject || null;
-                const projectStatus = currentEmp.specialProjectStatus || Store.user?.specialProjectStatus || "Pending";
-
-                let injectionHtml = '';
-
-                if (assignedProject) {
-                    injectionHtml += `
-                        <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
-                                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
-                            </div>
-                            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
-                                ${assignedProject}
-                            </p>
-                        </div>
-                    `;
-                }
-
-                if (assignedWindow && assignedTasks.length > 0) {
-                    injectionHtml += `
-                        <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
-                                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
-                            </div>
-                            <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                ${assignedTasks.map(task => `
-                                    <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
-                                        <span style="color: #166534; font-weight: bold;">📌</span>
-                                        <span style="font-weight: 500;">${task}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                if (injectionHtml) {
-                    targetView.insertAdjacentHTML('afterbegin', injectionHtml);
-                }
-            }
-        }
     }
 };
 const TRANSLATIONS = {
@@ -1003,78 +943,83 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    // 1. Locate the container across potential DOM IDs
-    const container = document.getElementById('checklist-container') || 
-                      document.getElementById('cook-dashboard-content') || 
-                      document.getElementById('cook-checklist-view');
+    const container = document.getElementById('shift-entry-content') || document.getElementById('view-shift-entry');
+    if (!container) return;
+
+    // 1. Find current employee record safely with bulletproof fallback lookup
+    const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
+    const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
-    if (!container) {
-        console.warn("Cook checklist container element not found in DOM.");
-        return;
+    const currentEmp = Store.employees.find(e => {
+        const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
+        const eName = String(e.name || e.Name || "").trim().toLowerCase();
+        return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
+    }) || {};
+
+    const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || currentEmp.AssignedPrepWindow || null;
+    let assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || currentEmp.AssignedPrepTasks || [];
+    
+    // Safety check if assignedTasks was stored as a JSON string
+    if (typeof assignedTasks === 'string') {
+        try { assignedTasks = JSON.parse(assignedTasks); } catch(e) { assignedTasks = []; }
     }
 
-    if (!Store.user) return;
+    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || Store.user?.specialProject || Store.user?.SpecialProject || null;
+    const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || Store.user?.specialProjectStatus || Store.user?.SpecialProjectStatus || "Pending";
 
-    // 2. Resolve the assigned station key (e.g. 'range_open', 'grill_fry_open', etc.)
-    // Check Store.user.station first, then fallback store properties
-    const rawStation = Store.assignedStationKey || Store.assignedChecklistKey || Store.assignedStation || (Store.user ? Store.user.station : '');
-    const stationKey = String(rawStation).trim().toLowerCase();
+    let assignmentCardsHtml = '';
 
-    // 3. Directly pull tasks from CHECKLIST_SPECS using the station key and current language
-    let tasks = [];
-    if (stationKey && CHECKLIST_SPECS[stationKey]) {
-        const langLang = Store.lang || 'en';
-        const specItems = CHECKLIST_SPECS[stationKey].items;
-        if (specItems) {
-            tasks = specItems[langLang] || specItems['en'] || [];
-        }
-    }
-
-    // Secondary fallbacks if not matched in specs
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-        tasks = Store.assignedStationTasks || Store.currentChecklistTasks || Store.activeChecklist || [];
-    }
-
-    let tasksHtml = "";
-    if (Array.isArray(tasks) && tasks.length > 0) {
-        tasksHtml = tasks.map((t, idx) => {
-            const label = typeof t === 'string' ? t : (t.label || t.name || t.text || `Task ${idx + 1}`);
-            return `
-                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9;">
-                    <span style="font-size: 1.1rem; color: #64748b;">📄</span>
-                    <div style="flex: 1;">
-                        <span style="font-size: 0.95rem; color: #1e293b; font-weight: 500;">${label}</span>
-                    </div>
+    // 2. Build Special Project Card (Appears First)
+    if (assignedProject) {
+        assignmentCardsHtml += `
+            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+                    <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
                 </div>
-            `;
-        }).join('');
-    } else {
-        tasksHtml = `
-            <div style="padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 6px;">
-                <p style="margin: 0;">No active station tasks currently assigned for <strong>${stationKey || 'your station'}</strong>. Please check with your manager for station assignment.</p>
+                <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                    ${assignedProject}
+                </p>
             </div>
         `;
     }
 
-    const prettyStationName = stationKey ? stationKey.replace(/_/g, ' ').toUpperCase() : 'NONE';
-
-    container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
-                <h3 style="color: #1e3a8a; margin: 0;">Station Checklist & Prep Task List (Read-Only)</h3>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-secondary" onclick="toggleLanguage()">🌐 Translate</button>
-                    <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Checklist</button>
+    // 3. Build Prep Tasks Card (Appears Second)
+    if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
+        assignmentCardsHtml += `
+            <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
+                    <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
+                </div>
+                <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    ${assignedTasks.map(task => `
+                        <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                            <span style="color: #166534; font-weight: bold;">📌</span>
+                            <span style="font-weight: 500;">${task}</span>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
-            <p style="font-size: 0.85rem; color: #64748b; margin: 0;">Assigned Station: <strong>${prettyStationName}</strong>. Review your tasks below. All audits, score check-offs, and final sign-offs are conducted by management during the Shift Audit.</p>
-        </div>
+        `;
+    }
+
+    // 4. Render the assignment cards followed by the native cook checklist items
+    container.innerHTML = `
+        ${assignmentCardsHtml}
         <div class="card">
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0 15px; max-height: 450px; overflow-y: auto;">
-                ${tasksHtml}
-            </div>
+            <h4 style="color: #1e3a8a; margin-top: 0;">📝 Active Station Checklist</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Complete your station tasks for the shift below.</p>
+            <!-- Native checklist tasks container -->
+            <div id="cook-checklist-tasks-container"></div>
         </div>
     `;
+
+    // If your app uses a helper to load checklist checklist inputs/items, trigger it here:
+    if (typeof window.renderCookChecklistItems === 'function') {
+        window.renderCookChecklistItems();
+    }
 }
 function completeSpecialProject() {
     if (!Store.user) return;
