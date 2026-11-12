@@ -575,6 +575,64 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         alert("⚠️ Assignment saved locally, but cloud sync encountered an issue.");
     });
 }
+const PREP_DUTY_TASKS = [
+    "Dice/chop required traulsen omelette fills",
+    "Wrap swiss/American/pepperjack cheese",
+    "Clean cold table (top and bottom) restock sauces",
+    "Make Bic Bites",
+    "Clean Fryolator(s)",
+    "Perform thaw pull of all proteins, sauces, and condiments (i.e. strawberries)",
+    "Thoroughly clean traulsen",
+    "Clean dish shelf",
+    "Make cole slaw",
+    "Slice tomatoes",
+    "Slice red onions",
+    "Clean hoods",
+    "Prep for Ez Cater (label to go containers/slice English muffins if necessary)"
+];
+
+function assignPrepDuty() {
+    const empIdSelect = document.getElementById('prep-duty-emp');
+    const shiftWindowSelect = document.getElementById('prep-duty-window');
+    
+    if (!empIdSelect || !shiftWindowSelect) return;
+
+    const empId = empIdSelect.value;
+    const shiftWindow = shiftWindowSelect.value;
+
+    // Collect all checked task checkboxes from the UI widget
+    const checkedBoxes = document.querySelectorAll('.prep-task-checkbox:checked');
+    const selectedTasks = Array.from(checkedBoxes).map(cb => cb.value);
+
+    if (!empId || !shiftWindow || selectedTasks.length === 0) {
+        alert("Please select a cook, a shift time window, and at least one prep task.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Selected employee could not be found.");
+        return;
+    }
+
+    // Save prep details to the employee object
+    emp.assignedPrepWindow = shiftWindow;
+    emp.assignedPrepTasks = selectedTasks;
+    emp.prepStatus = "Assigned / In Progress";
+
+    // Sync to Google Sheet backend via API Service
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Prep duty assigned successfully to ${emp.name || emp.Name} for ${shiftWindow}! It will appear on their dashboard.`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Prep saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error assigning prep duty:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
 function renderGMManagerAssignmentWidget(targetId = 'gm-mod-widget-box') {
     const container = document.getElementById(targetId);
     if (!container) return;
@@ -1961,9 +2019,40 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
+    // 1. Retrieve the logged-in cook's current prep assignment
     const cookId = String(Store.user.id || Store.user.ID || "").trim();
     const cookName = String(Store.user.name || Store.user.Name || "").trim().toLowerCase();
 
+    const currentEmployeeRecord = Store.employees.find(e => {
+        const eId = String(e.id || e.ID || "").trim();
+        const eName = String(e.name || e.Name || "").trim().toLowerCase();
+        return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
+    }) || {};
+
+    const assignedWindow = currentEmployeeRecord.assignedPrepWindow || Store.user.assignedPrepWindow || null;
+    const assignedTasks = currentEmployeeRecord.assignedPrepTasks || Store.user.assignedPrepTasks || [];
+
+    // 2. Build the Read-Only Prep Duty Banner HTML if tasks are assigned
+    const prepSectionHtml = assignedWindow ? `
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
+                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Checklist</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${assignedTasks.map((task, idx) => `
+                    <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                        <span style="color: #166534; font-weight: bold;">📌</span>
+                        <span style="font-weight: 500;">${task}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
+    // 3. Filter shifts for the performance log
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
         const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
@@ -2014,6 +2103,7 @@ function renderCookDashboard() {
         }).join('');
 
     container.innerHTML = `
+        ${prepSectionHtml}
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Cook Dashboard & Performance Log'}</h3>
             <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub') || 'View your officially audited and manager-approved shift records below.'}</p>
@@ -2065,7 +2155,7 @@ function renderManagerDashboard() {
         return proj !== "" && (status.includes("pending") || status.includes("completed"));
     });
 
-    // Get active cooks for the assignment dropdown inline
+    // Get active cooks for assignment dropdowns inline
     let cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
@@ -2083,13 +2173,13 @@ function renderManagerDashboard() {
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions and review completed employee shift reports. Click any row to audit checklist details.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions, delegate prep duties, and review completed shift reports. Click any row to audit checklist details.</p>
         </div>
 
         <!-- SPECIAL PROJECT WIDGET -->
         <div id="special-project-widget-container"></div>
 
-        <!-- MANAGER COOK ASSIGNMENT WIDGET (Hardcoded directly into the DOM so it never vanishes) -->
+        <!-- 1. COOK LINE STATION ASSIGNMENT WIDGET -->
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
@@ -2112,6 +2202,45 @@ function renderManagerDashboard() {
                     <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Cook Shift 🚀</button>
                 </div>
             </div>
+        </div>
+
+        <!-- 2. NEW PREP DUTY ASSIGNMENT WIDGET -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
+            <h4 style="color: #166534; margin-top: 0;">⏱️ Assign Pre-Shift / Mid-Shift / Post-Shift Prep</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Utilize dead-time hours to delegate crucial kitchen prep tasks based on predicted volume.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 1rem;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Select Cook:</label>
+                    <select id="prep-duty-emp" class="form-control" style="width: 100%; margin-top: 4px;">
+                        <option value="">-- Select Cook --</option>
+                        ${cooks.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Shift Time Window:</label>
+                    <select id="prep-duty-window" class="form-control" style="width: 100%; margin-top: 4px;">
+                        <option value="">-- Select Window --</option>
+                        <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift (6:30 a.m. - 7:45 a.m.)</option>
+                        <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift (3:00 p.m. - 4:00 p.m.)</option>
+                        <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift (6:45 p.m. - 7:45 p.m.)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Assign:</label>
+                <div style="max-height: 160px; overflow-y: auto; background: white; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
+                    ${PREP_DUTY_TASKS.map(task => `
+                        <label style="font-size: 0.85rem; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #1e293b;">
+                            <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
+                            <span>${task}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
         </div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
@@ -2288,12 +2417,18 @@ function renderGMDashboard() {
     const filteredCookShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
     const filteredManagerShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
 
-    // Get managers inline for the MOD assignment dropdown
+    // Get managers and cooks inline for dropdowns
     let managers = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
     });
     if (managers.length === 0) managers = Store.employees;
+
+    let cooksList = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
+    });
+    if (cooksList.length === 0) cooksList = Store.employees;
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
@@ -2312,7 +2447,7 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- MANAGER ON DUTY (MOD) ASSIGNMENT WIDGET (Hardcoded directly so it never vanishes) -->
+        <!-- MANAGER ON DUTY (MOD) ASSIGNMENT WIDGET -->
         <div class="card" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
@@ -2336,6 +2471,45 @@ function renderGMDashboard() {
                     <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
                 </div>
             </div>
+        </div>
+
+        <!-- PREP DUTY ASSIGNMENT WIDGET IN GM SUITE -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
+            <h4 style="color: #166534; margin-top: 0;">⏱️ Assign Pre-Shift / Mid-Shift / Post-Shift Prep</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Utilize dead-time hours to delegate crucial kitchen prep tasks based on predicted volume.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 1rem;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Select Cook:</label>
+                    <select id="prep-duty-emp" class="form-control" style="width: 100%; margin-top: 4px;">
+                        <option value="">-- Select Cook --</option>
+                        ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Shift Time Window:</label>
+                    <select id="prep-duty-window" class="form-control" style="width: 100%; margin-top: 4px;">
+                        <option value="">-- Select Window --</option>
+                        <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift (6:30 a.m. - 7:45 a.m.)</option>
+                        <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift (3:00 p.m. - 4:00 p.m.)</option>
+                        <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift (6:45 p.m. - 7:45 p.m.)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Assign:</label>
+                <div style="max-height: 160px; overflow-y: auto; background: white; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
+                    ${PREP_DUTY_TASKS.map(task => `
+                        <label style="font-size: 0.85rem; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #1e293b;">
+                            <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
+                            <span>${task}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
         </div>
 
         <div class="card" style="margin-bottom: 1.5rem;">
