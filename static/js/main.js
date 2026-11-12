@@ -83,6 +83,69 @@ const UIController = {
         if (id === 'cook-training') renderTrainingView();
         if (id === 'recipe-book') renderRecipeBook();
         if (id === 'roster') renderRosterView();
+
+        // --- AUTOMATIC ASSIGNMENT INJECTOR FOR COOKS ---
+        if (Store.role !== 'manager' && Store.role !== 'gm') {
+            const targetView = document.getElementById('view-shift-entry') || document.getElementById('view-cook-dashboard');
+            if (targetView) {
+                // Remove stale cards to prevent duplication
+                targetView.querySelectorAll('.injected-assignment-card').forEach(el => el.remove());
+
+                // Find employee assignments
+                const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || "").trim();
+                const cookName = String(Store.user?.name || Store.user?.Name || "").trim().toLowerCase();
+                const currentEmp = Store.employees.find(e => {
+                    const eId = String(e.id || e.ID || "").trim();
+                    const eName = String(e.name || e.Name || "").trim().toLowerCase();
+                    return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
+                }) || {};
+
+                const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || null;
+                const assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || [];
+                const assignedProject = currentEmp.specialProject || Store.user?.specialProject || null;
+                const projectStatus = currentEmp.specialProjectStatus || Store.user?.specialProjectStatus || "Pending";
+
+                let injectionHtml = '';
+
+                if (assignedProject) {
+                    injectionHtml += `
+                        <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+                                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
+                            </div>
+                            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                                ${assignedProject}
+                            </p>
+                        </div>
+                    `;
+                }
+
+                if (assignedWindow && assignedTasks.length > 0) {
+                    injectionHtml += `
+                        <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
+                                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
+                            </div>
+                            <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                ${assignedTasks.map(task => `
+                                    <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                                        <span style="color: #166534; font-weight: bold;">📌</span>
+                                        <span style="font-weight: 500;">${task}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (injectionHtml) {
+                    targetView.insertAdjacentHTML('afterbegin', injectionHtml);
+                }
+            }
+        }
     }
 };
 const TRANSLATIONS = {
