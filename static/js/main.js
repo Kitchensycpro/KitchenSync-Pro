@@ -956,10 +956,15 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    // Grab Prep Window & Tasks with extensive fallbacks
-    const assignedWindow = currentEmp.assignedPrepWindow || Store.user?.assignedPrepWindow || currentEmp.AssignedPrepWindow || Store.user?.AssignedPrepWindow || null;
-    let assignedTasks = currentEmp.assignedPrepTasks || Store.user?.assignedPrepTasks || currentEmp.AssignedPrepTasks || Store.user?.AssignedPrepTasks || [];
+    console.log("🔍 DEBUG - Current Employee Record found for Cook:", currentEmp);
+
+    // 2. Grab Prep Window & Tasks with exhaustive key checks
+    const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || Store.user?.assignedPrepWindow || null;
+    let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || Store.user?.assignedPrepTasks || [];
     
+    console.log("🔍 DEBUG - Raw Assigned Window:", assignedWindow);
+    console.log("🔍 DEBUG - Raw Assigned Tasks:", assignedTasks);
+
     // Safety check if assignedTasks was stored as a JSON string or comma-separated string
     if (typeof assignedTasks === 'string') {
         try { 
@@ -969,16 +974,15 @@ function renderCookChecklistGated() {
         }
     }
 
-    // Grab Special Project & Status
-    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || Store.user?.specialProject || Store.user?.SpecialProject || null;
-    const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || Store.user?.specialProjectStatus || Store.user?.SpecialProjectStatus || "Pending";
+    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || Store.user?.specialProject || null;
+    const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
 
     // Remove any stale injection cards to prevent duplication
     container.querySelectorAll('.injected-assignment-card').forEach(el => el.remove());
 
     let assignmentCardsHtml = '';
 
-    // 2. Build Special Project Card (Appears First)
+    // 3. Build Special Project Card (Appears First)
     if (assignedProject) {
         assignmentCardsHtml += `
             <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
@@ -993,7 +997,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 3. Build Prep Tasks Card (Appears Second)
+    // 4. Build Prep Tasks Card (Appears Second)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
             <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
@@ -1014,14 +1018,14 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 4. Trigger the native checklist rendering function first so the task items exist in memory
+    // 5. Trigger the native checklist rendering function first so native tasks populate
     if (typeof window.renderCookChecklist === 'function') {
         window.renderCookChecklist();
     } else if (typeof window.renderActiveChecklist === 'function') {
         window.renderActiveChecklist();
     }
 
-    // 5. Prepend our assignment cards directly to the top of the container without destroying native items
+    // 6. Prepend our assignment cards directly to the top of the container
     if (assignmentCardsHtml) {
         container.insertAdjacentHTML('afterbegin', assignmentCardsHtml);
     }
