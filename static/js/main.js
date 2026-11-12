@@ -943,10 +943,18 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    const container = document.getElementById('shift-entry-content') || document.getElementById('view-shift-entry');
+    const container = document.getElementById('checklist-container');
     if (!container) return;
 
-    // 1. Find current employee record safely with bulletproof fallback lookup
+    container.innerHTML = '';
+
+    // 1. If session state is empty, check if Store.user has a saved station from the database
+    if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
+        Store.assignedChecklistKey = Store.user.station;
+        Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
+    }
+
+    // 2. Find current employee record safely with bulletproof fallback lookup
     const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
     const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
@@ -956,7 +964,7 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    // 2. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
+    // 3. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
     const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || Store.user?.assignedPrepWindow || null;
     let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || Store.user?.assignedPrepTasks || [];
     
@@ -971,15 +979,12 @@ function renderCookChecklistGated() {
     const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || Store.user?.specialProject || null;
     const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
 
-    // Remove any stale injection cards to prevent duplication
-    container.querySelectorAll('.injected-assignment-card').forEach(el => el.remove());
-
     let assignmentCardsHtml = '';
 
-    // 3. Build Special Project Card (Appears First)
+    // 4. Build Special Project Card (Appears First)
     if (assignedProject) {
         assignmentCardsHtml += `
-            <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
                     <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
@@ -987,14 +992,17 @@ function renderCookChecklistGated() {
                 <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
                     ${assignedProject}
                 </p>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background: #ea580c; color: white; border: none;" onclick="completeSpecialProject()">Mark Project Complete ✅</button>
+                </div>
             </div>
         `;
     }
 
-    // 4. Build Prep Tasks Card (Appears Second)
+    // 5. Build Prep Tasks Card (Appears Second)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
-            <div class="card injected-assignment-card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+            <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
                     <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
@@ -1012,17 +1020,59 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 5. Trigger the native checklist rendering function first so native tasks populate into the container
-    if (typeof window.renderCookChecklist === 'function') {
-        window.renderCookChecklist();
-    } else if (typeof window.renderActiveChecklist === 'function') {
-        window.renderActiveChecklist();
+    // Prepend the assignment cards to the container
+    container.innerHTML = assignmentCardsHtml;
+
+    // 6. Handle station gating check for native checklist
+    if (!Store.assignedStation || !Store.assignedChecklistKey) {
+        const warningBanner = document.createElement('div');
+        warningBanner.className = 'card';
+        warningBanner.style.cssText = 'background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;';
+        warningBanner.innerHTML = `
+            <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Station Access Pending</h3>
+            <p style="color: #92400e; font-size: 0.95rem;">No station checklist has been assigned to you yet by a Manager.</p>
+        `;
+        container.appendChild(warningBanner);
+        return;
     }
 
-    // 6. Prepend our assignment cards directly to the top of the container
-    if (assignmentCardsHtml) {
-        container.insertAdjacentHTML('afterbegin', assignmentCardsHtml);
+    // 7. Render Native Station Checklist Banner & Tasks
+    const assignedKey = Store.assignedChecklistKey;
+    const specs = CHECKLIST_SPECS[Store.lang]?.[assignedKey] || CHECKLIST_SPECS['en'][assignedKey] || CHECKLIST_SPECS['en']['range_open'];
+
+    const banner = document.createElement('div');
+    banner.className = 'card';
+    banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
+    banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3><p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>`;
+    container.appendChild(banner);
+
+    if (specs && specs.items) {
+        let taskItems = specs.items[Store.lang] || specs.items['en'] || [];
+        let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements</h3>`;
+        
+        taskItems.forEach((taskText, idx) => {
+            html += `
+                <div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+                    <input type="checkbox" class="task-checkbox" id="cb-cook-${idx}">
+                    <div class="task-desc" style="font-size:0.85rem; color:#1e293b; font-weight: 500;">${taskText}</div>
+                </div>
+            `;
+        });
+        
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'card checklist-section';
+        sectionDiv.innerHTML = html;
+        container.appendChild(sectionDiv);
     }
+
+    // 8. Action Buttons
+    const actionsDiv = document.createElement('div');
+    actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
+    actionsDiv.innerHTML = `
+        <button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button>
+        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
+    `;
+    container.appendChild(actionsDiv);
 }
 function completeSpecialProject() {
     if (!Store.user) return;
