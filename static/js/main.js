@@ -948,7 +948,7 @@ function renderCookChecklistGated() {
 
     container.innerHTML = '';
 
-    // 1. If session state is empty, check if Store.user has a saved station from the database
+    // 1. If station isn't set in memory yet, sync it from the user record
     if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
         Store.assignedChecklistKey = Store.user.station;
         Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
@@ -1020,7 +1020,6 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // Prepend the assignment cards to the container
     container.innerHTML = assignmentCardsHtml;
 
     // 6. Handle station gating check for native checklist
