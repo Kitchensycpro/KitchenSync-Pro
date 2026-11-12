@@ -2019,26 +2019,34 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
-    // 1. Retrieve the logged-in cook's current profile record & assignments
-    const cookId = String(Store.user.id || Store.user.ID || "").trim();
-    const cookName = String(Store.user.name || Store.user.Name || "").trim().toLowerCase();
+    console.log("🔍 Store.user object on cook dashboard:", Store.user);
+
+    // 1. Bulletproof lookup to find the employee record across all possible property names
+    const cookId = String(Store.user.id || Store.user.ID || Store.user.employeeId || Store.user.empId || "").trim();
+    const cookName = String(Store.user.name || Store.user.Name || Store.user.username || "").trim().toLowerCase();
 
     const currentEmployeeRecord = Store.employees.find(e => {
-        const eId = String(e.id || e.ID || "").trim();
+        const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
         const eName = String(e.name || e.Name || "").trim().toLowerCase();
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    // Grab Prep Duties
-    const assignedWindow = currentEmployeeRecord.assignedPrepWindow || Store.user.assignedPrepWindow || null;
-    const assignedTasks = currentEmployeeRecord.assignedPrepTasks || Store.user.assignedPrepTasks || [];
+    console.log("🔍 Matched employee record from Store.employees:", currentEmployeeRecord);
 
-    // Grab Special Projects
-    const assignedProject = currentEmployeeRecord.specialProject || currentEmployeeRecord.SpecialProject || Store.user.specialProject || null;
-    const projectStatus = currentEmployeeRecord.specialProjectStatus || currentEmployeeRecord.SpecialProjectStatus || Store.user.specialProjectStatus || "Pending";
+    // 2. Grab Prep Duties (checking both employee record and Store.user)
+    const assignedWindow = currentEmployeeRecord.assignedPrepWindow || Store.user.assignedPrepWindow || currentEmployeeRecord.AssignedPrepWindow || null;
+    const assignedTasks = currentEmployeeRecord.assignedPrepTasks || Store.user.assignedPrepTasks || currentEmployeeRecord.AssignedPrepTasks || [];
 
-    // 2. Build Read-Only Prep Duty Banner HTML if tasks are assigned
-    const prepSectionHtml = assignedWindow ? `
+    // 3. Grab Special Projects (checking both employee record and Store.user)
+    const assignedProject = currentEmployeeRecord.specialProject || currentEmployeeRecord.SpecialProject || Store.user.specialProject || Store.user.SpecialProject || null;
+    const projectStatus = currentEmployeeRecord.specialProjectStatus || currentEmployeeRecord.SpecialProjectStatus || Store.user.specialProjectStatus || Store.user.SpecialProjectStatus || "Pending";
+
+    console.log("📋 Resolved Assigned Window:", assignedWindow);
+    console.log("📋 Resolved Assigned Tasks:", assignedTasks);
+    console.log("🛠️ Resolved Assigned Project:", assignedProject);
+
+    // 4. Build Read-Only Prep Duty Banner HTML if tasks are assigned
+    const prepSectionHtml = assignedWindow && assignedTasks.length > 0 ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
@@ -2057,7 +2065,7 @@ function renderCookDashboard() {
         </div>
     ` : '';
 
-    // 3. Build Read-Only Special Project Card HTML if assigned
+    // 5. Build Read-Only Special Project Card HTML if assigned
     const projectSectionHtml = assignedProject ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2070,7 +2078,7 @@ function renderCookDashboard() {
         </div>
     ` : '';
 
-    // 4. Filter shifts for the performance log
+    // 6. Filter shifts for the performance log
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
         const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
