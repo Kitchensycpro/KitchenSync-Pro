@@ -956,16 +956,10 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    console.log("🔍 DEBUG - Current Employee Record found for Cook:", currentEmp);
-
-    // 2. Grab Prep Window & Tasks with exhaustive key checks
+    // 2. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
     const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || Store.user?.assignedPrepWindow || null;
     let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || Store.user?.assignedPrepTasks || [];
     
-    console.log("🔍 DEBUG - Raw Assigned Window:", assignedWindow);
-    console.log("🔍 DEBUG - Raw Assigned Tasks:", assignedTasks);
-
-    // Safety check if assignedTasks was stored as a JSON string or comma-separated string
     if (typeof assignedTasks === 'string') {
         try { 
             assignedTasks = JSON.parse(assignedTasks); 
@@ -1018,7 +1012,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 5. Trigger the native checklist rendering function first so native tasks populate
+    // 5. Trigger the native checklist rendering function first so native tasks populate into the container
     if (typeof window.renderCookChecklist === 'function') {
         window.renderCookChecklist();
     } else if (typeof window.renderActiveChecklist === 'function') {
