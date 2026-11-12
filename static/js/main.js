@@ -2045,12 +2045,25 @@ function renderCookDashboard() {
     console.log("📋 Resolved Assigned Tasks:", assignedTasks);
     console.log("🛠️ Resolved Assigned Project:", assignedProject);
 
-    // 4. Build Read-Only Prep Duty Banner HTML if tasks are assigned
+    // 4. Build Read-Only Special Project Card HTML if assigned (Appears first under station checklist area)
+    const projectSectionHtml = assignedProject ? `
+        <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
+            </div>
+            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                ${assignedProject}
+            </p>
+        </div>
+    ` : '';
+
+    // 5. Build Read-Only Prep Duty Banner HTML if tasks are assigned (Appears second)
     const prepSectionHtml = assignedWindow && assignedTasks.length > 0 ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
-                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Checklist</span>
+                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
             </div>
             <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
             
@@ -2065,20 +2078,7 @@ function renderCookDashboard() {
         </div>
     ` : '';
 
-    // 5. Build Read-Only Special Project Card HTML if assigned
-    const projectSectionHtml = assignedProject ? `
-        <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
-                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
-            </div>
-            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
-                ${assignedProject}
-            </p>
-        </div>
-    ` : '';
-
-    // 6. Filter shifts for the performance log
+    // 6. Filter shifts for the performance log table
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
         const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
@@ -2126,11 +2126,26 @@ function renderCookDashboard() {
             </tr>`;
         }).join('');
 
+    // 7. Render complete layout sequence
     container.innerHTML = `
-        ${prepSectionHtml}
-        ${projectSectionHtml}
         <div class="card" style="margin-bottom: 1.5rem;">
-            <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Cook Dashboard & Performance Log'}</h3>
+            <h3 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Cook Station Checklist & Prep Task List (Read-Only)</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Review your assigned special projects, delegated prep duties, and active station requirements below.</p>
+        </div>
+
+        ${projectSectionHtml}
+        ${prepSectionHtml}
+
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📋 Active Station Checklist (Read-Only View)</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Your assigned line station tasks are displayed here for shift execution.</p>
+            <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #e2e8f0; color: #64748b; font-size: 0.9rem;">
+                Select your station from your shift assignment above to review operational requirements.
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem; margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Completed Shifts & Performance Log'}</h3>
             <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub') || 'View your officially audited and manager-approved shift records below.'}</p>
         </div>
         <div class="card">
