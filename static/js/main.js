@@ -2019,7 +2019,7 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
-    // 1. Retrieve the logged-in cook's current prep assignment
+    // 1. Retrieve the logged-in cook's current profile record & assignments
     const cookId = String(Store.user.id || Store.user.ID || "").trim();
     const cookName = String(Store.user.name || Store.user.Name || "").trim().toLowerCase();
 
@@ -2029,10 +2029,15 @@ function renderCookDashboard() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
+    // Grab Prep Duties
     const assignedWindow = currentEmployeeRecord.assignedPrepWindow || Store.user.assignedPrepWindow || null;
     const assignedTasks = currentEmployeeRecord.assignedPrepTasks || Store.user.assignedPrepTasks || [];
 
-    // 2. Build the Read-Only Prep Duty Banner HTML if tasks are assigned
+    // Grab Special Projects
+    const assignedProject = currentEmployeeRecord.specialProject || currentEmployeeRecord.SpecialProject || Store.user.specialProject || null;
+    const projectStatus = currentEmployeeRecord.specialProjectStatus || currentEmployeeRecord.SpecialProjectStatus || Store.user.specialProjectStatus || "Pending";
+
+    // 2. Build Read-Only Prep Duty Banner HTML if tasks are assigned
     const prepSectionHtml = assignedWindow ? `
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -2042,7 +2047,7 @@ function renderCookDashboard() {
             <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
-                ${assignedTasks.map((task, idx) => `
+                ${assignedTasks.map((task) => `
                     <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
                         <span style="color: #166534; font-weight: bold;">📌</span>
                         <span style="font-weight: 500;">${task}</span>
@@ -2052,7 +2057,20 @@ function renderCookDashboard() {
         </div>
     ` : '';
 
-    // 3. Filter shifts for the performance log
+    // 3. Build Read-Only Special Project Card HTML if assigned
+    const projectSectionHtml = assignedProject ? `
+        <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
+            </div>
+            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                ${assignedProject}
+            </p>
+        </div>
+    ` : '';
+
+    // 4. Filter shifts for the performance log
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
         const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
@@ -2060,7 +2078,6 @@ function renderCookDashboard() {
         const matchesId = cookId !== "" && sEmpId === cookId;
         const matchesName = cookName !== "" && sEmpName === cookName;
         
-        // ONLY show shifts in the performance log that have been signed off by management
         const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true' || s.ManagerSignOff === true;
 
         return (matchesId || matchesName) && isSignedOff;
@@ -2068,7 +2085,6 @@ function renderCookDashboard() {
 
     let rowsHtml = myShifts.length === 0 ? `<tr><td colspan="6" style="text-align: center; color: #64748b;">${t('noShifts') || 'No completed & signed-off shift records found.'}</td></tr>` :
         myShifts.map(s => {
-            // Parse tasks for dynamic calculation
             let tasks = s.tasks || s.Tasks || [];
             if (typeof s.notes === 'string' && s.notes.startsWith('[')) {
                 try { tasks = JSON.parse(s.notes); } catch(e) {}
@@ -2104,6 +2120,7 @@ function renderCookDashboard() {
 
     container.innerHTML = `
         ${prepSectionHtml}
+        ${projectSectionHtml}
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Cook Dashboard & Performance Log'}</h3>
             <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub') || 'View your officially audited and manager-approved shift records below.'}</p>
