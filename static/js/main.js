@@ -958,11 +958,13 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
 
-    // 2. Automatically sync assigned station from employee record if Store memory isn't set yet
-    const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station;
-    if (rawStationKey) {
-        Store.assignedChecklistKey = rawStationKey;
-        Store.assignedStation = String(rawStationKey).replace(/_/g, ' ').toUpperCase();
+    // 2. Automatically sync and normalize assigned station from employee record or memory
+    const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
+    const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
+
+    if (normalizedStationKey) {
+        Store.assignedChecklistKey = normalizedStationKey;
+        Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
     }
 
     // 3. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
@@ -1036,9 +1038,15 @@ function renderCookChecklistGated() {
         return;
     }
 
-    // 7. Render Native Station Checklist Banner & Tasks
+    // 7. Safely Render Native Station Checklist Banner & Tasks
     const assignedKey = Store.assignedChecklistKey;
-    const specs = CHECKLIST_SPECS[Store.lang]?.[assignedKey] || CHECKLIST_SPECS['en'][assignedKey] || CHECKLIST_SPECS['en']['range_open'];
+    const langKey = Store.lang || 'en';
+    
+    // Bulletproof lookup falling back safely if spec key doesn't exist
+    const specs = (CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][assignedKey]) || 
+                  (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][assignedKey]) || 
+                  CHECKLIST_SPECS['range_open'] || 
+                  { title: { en: Store.assignedStation }, items: { en: [] } };
 
     const banner = document.createElement('div');
     banner.className = 'card';
@@ -1046,8 +1054,17 @@ function renderCookChecklistGated() {
     banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3><p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>`;
     container.appendChild(banner);
 
-    if (specs && specs.items) {
-        let taskItems = specs.items[Store.lang] || specs.items['en'] || [];
+    // Extract item list safely supporting multiple schema structures
+    let taskItems = [];
+    if (specs.items) {
+        if (Array.isArray(specs.items)) {
+            taskItems = specs.items;
+        } else {
+            taskItems = specs.items[langKey] || specs.items['en'] || [];
+        }
+    }
+
+    if (taskItems.length > 0) {
         let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements</h3>`;
         
         taskItems.forEach((taskText, idx) => {
