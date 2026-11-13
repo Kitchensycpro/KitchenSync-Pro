@@ -532,6 +532,7 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         return;
     }
 
+    // Save with both case variants
     emp.station = stationKey;
     emp.Station = stationKey;
 
@@ -540,8 +541,8 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
 
-    const stationSpec = CHECKLIST_SPECS[stationKey];
-    const taskItemsText = (stationSpec && stationSpec.items && stationSpec.items['en']) ? stationSpec.items['en'] : [];
+    const stationSpec = CHECKLIST_SPECS['en'][stationKey] || CHECKLIST_SPECS[stationKey];
+    const taskItemsText = (stationSpec && stationSpec.items) ? (stationSpec.items['en'] || stationSpec.items) : [];
     const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
 
     const initialShift = {
@@ -617,7 +618,7 @@ function assignPrepDuty() {
         return;
     }
 
-    // Save with both camelCase and Capitalized aliases for maximum compatibility
+    // Save prep details with multiple property aliases to prevent lookup failures
     emp.assignedPrepWindow = shiftWindow;
     emp.AssignedPrepWindow = shiftWindow;
     emp.assignedPrepTasks = selectedTasks;
@@ -948,7 +949,7 @@ function renderCookChecklistGated() {
 
     container.innerHTML = '';
 
-    // 1. STRT: Strict Role Check — Ensure Managers/GMs never render here
+    // 1. Strict Role Check — Ensure Managers/GMs never render here
     if (Store.role === 'manager' || Store.role === 'gm') {
         if (typeof renderManagerChecklist === 'function') {
             renderManagerChecklist();
@@ -956,7 +957,7 @@ function renderCookChecklistGated() {
         return;
     }
 
-    // 2. Find current employee record from Store.employees (where manager assignments live)
+    // 2. Find current employee record from Store.employees
     const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
     const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
@@ -966,7 +967,6 @@ function renderCookChecklistGated() {
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || Store.user || {};
 
-    // Sync Store.user reference if out of date
     if (currentEmp && Object.keys(currentEmp).length > 0) {
         Store.user = Object.assign({}, Store.user, currentEmp);
     }
@@ -980,16 +980,22 @@ function renderCookChecklistGated() {
         Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
     }
 
-    // 4. Extract Prep Window & Tasks safely with deep fallback checks
+    // 4. Extract & Bulletproof Parse Prep Window & Tasks
     const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || currentEmp.PREPWINDOW || null;
-    let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
+    let rawAssignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
     
-    if (typeof assignedTasks === 'string') {
+    let assignedTasks = [];
+    if (Array.isArray(rawAssignedTasks)) {
+        assignedTasks = rawAssignedTasks;
+    } else if (typeof rawAssignedTasks === 'string') {
         try { 
-            assignedTasks = JSON.parse(assignedTasks); 
+            const parsed = JSON.parse(rawAssignedTasks);
+            assignedTasks = Array.isArray(parsed) ? parsed : [rawAssignedTasks];
         } catch(e) { 
-            assignedTasks = assignedTasks.split(',').map(t => t.trim()).filter(Boolean);
+            assignedTasks = rawAssignedTasks.split(',').map(t => t.trim()).filter(Boolean);
         }
+    } else if (typeof rawAssignedTasks === 'object' && rawAssignedTasks !== null) {
+        assignedTasks = Object.values(rawAssignedTasks);
     }
 
     const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || currentEmp.SPECIALPROJECT || null;
@@ -1016,7 +1022,7 @@ function renderCookChecklistGated() {
     }
 
     // 6. Build Prep Tasks Card (Appears Second, right below Special Project)
-    if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
+    if (assignedWindow && assignedTasks.length > 0) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -1028,7 +1034,7 @@ function renderCookChecklistGated() {
                     ${assignedTasks.map(task => `
                         <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
                             <span style="color: #166534; font-weight: bold;">📌</span>
-                            <span style="font-weight: 500;">${task}</span>
+                            <span style="font-weight: 500;">${typeof task === 'object' ? (task.label || task.text || JSON.stringify(task)) : task}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -1051,7 +1057,7 @@ function renderCookChecklistGated() {
         return;
     }
 
-    // 8. Render Native Station Checklist Banner & 15-Task Requirements Below Assignments
+    // 8. Render Read-Only Native Station Checklist Banner & 15-Task Requirements
     const assignedKey = Store.assignedChecklistKey;
     const langKey = Store.lang || 'en';
     
@@ -1063,7 +1069,15 @@ function renderCookChecklistGated() {
     const banner = document.createElement('div');
     banner.className = 'card';
     banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
-    banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3><p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>`;
+    banner.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3>
+                <p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>
+            </div>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only Station View</span>
+        </div>
+    `;
     container.appendChild(banner);
 
     let taskItems = [];
@@ -1076,12 +1090,12 @@ function renderCookChecklistGated() {
     }
 
     if (taskItems.length > 0) {
-        let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements</h3>`;
+        let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements (Read-Only)</h3>`;
         
         taskItems.forEach((taskText, idx) => {
             html += `
                 <div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-                    <input type="checkbox" class="task-checkbox" id="cb-cook-${idx}">
+                    <input type="checkbox" class="task-checkbox" id="cb-cook-${idx}" disabled style="cursor: not-allowed; width: 18px; height: 18px;">
                     <div class="task-desc" style="font-size:0.85rem; color:#1e293b; font-weight: 500;">${taskText}</div>
                 </div>
             `;
@@ -1093,11 +1107,10 @@ function renderCookChecklistGated() {
         container.appendChild(sectionDiv);
     }
 
-    // 9. Action Buttons
+    // 9. Action Buttons (Print Button Restored, Submit Button Removed)
     const actionsDiv = document.createElement('div');
     actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
     actionsDiv.innerHTML = `
-        <button class="btn btn-primary" onclick="submitCookShiftChecklist()">💾 Submit Completed Station Checklist</button>
         <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
     `;
     container.appendChild(actionsDiv);
