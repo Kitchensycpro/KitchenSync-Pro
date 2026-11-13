@@ -948,13 +948,7 @@ function renderCookChecklistGated() {
 
     container.innerHTML = '';
 
-    // 1. If station isn't set in memory yet, sync it from the user record
-    if ((!Store.assignedStation || !Store.assignedChecklistKey) && Store.user && Store.user.station) {
-        Store.assignedChecklistKey = Store.user.station;
-        Store.assignedStation = Store.user.station.replace(/_/g, ' ').toUpperCase();
-    }
-
-    // 2. Find current employee record safely with bulletproof fallback lookup
+    // 1. Find current employee record safely with bulletproof fallback lookup
     const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
     const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
@@ -963,6 +957,13 @@ function renderCookChecklistGated() {
         const eName = String(e.name || e.Name || "").trim().toLowerCase();
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
     }) || {};
+
+    // 2. Automatically sync assigned station from employee record if Store memory isn't set yet
+    const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station;
+    if (rawStationKey) {
+        Store.assignedChecklistKey = rawStationKey;
+        Store.assignedStation = String(rawStationKey).replace(/_/g, ' ').toUpperCase();
+    }
 
     // 3. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
     const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || Store.user?.assignedPrepWindow || null;
@@ -1073,29 +1074,6 @@ function renderCookChecklistGated() {
     `;
     container.appendChild(actionsDiv);
 }
-function completeSpecialProject() {
-    if (!Store.user) return;
-    
-    // Mark as completed with exact status string required by manager dashboard filters
-    Store.user.specialProjectStatus = "Completed - Pending Sign-Off";
-    
-    // Save the employee update to the Google Sheet backend
-    ApiService.request('saveEmployee', { employee: Store.user }).then(res => {
-        if (res && res.success) {
-            alert("✅ Special project marked complete and submitted to management for sign-off!");
-            
-            // Force an immediate global cloud reload so managers see it instantly across devices
-            loadGlobalAppData();
-        } else {
-            alert("⚠️ Project marked complete locally, but cloud sync encountered an issue.");
-            UIController.refreshActiveView();
-        }
-    }).catch(err => {
-        console.error("Error saving completed special project:", err);
-        alert("❌ Error connecting to cloud backend. Please check your network connection.");
-    });
-}
-
 function renderManagerChecklist() {
     const container = document.getElementById('manager-checklist-content');
     if (!container) return;
