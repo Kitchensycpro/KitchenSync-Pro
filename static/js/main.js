@@ -603,7 +603,6 @@ function assignPrepDuty() {
     const empId = empIdSelect.value;
     const shiftWindow = shiftWindowSelect.value;
 
-    // Collect all checked task checkboxes from the UI widget
     const checkedBoxes = document.querySelectorAll('.prep-task-checkbox:checked');
     const selectedTasks = Array.from(checkedBoxes).map(cb => cb.value);
 
@@ -618,15 +617,16 @@ function assignPrepDuty() {
         return;
     }
 
-    // Save prep details to the employee object
+    // Save with both camelCase and Capitalized aliases for maximum compatibility
     emp.assignedPrepWindow = shiftWindow;
+    emp.AssignedPrepWindow = shiftWindow;
     emp.assignedPrepTasks = selectedTasks;
+    emp.AssignedPrepTasks = selectedTasks;
     emp.prepStatus = "Assigned / In Progress";
 
-    // Sync to Google Sheet backend via API Service
     ApiService.request('saveEmployee', { employee: emp }).then(res => {
         if (res && res.success) {
-            alert(`✅ Prep duty assigned successfully to ${emp.name || emp.Name} for ${shiftWindow}! It will appear on their dashboard.`);
+            alert(`✅ Prep duty assigned successfully to ${emp.name || emp.Name} for ${shiftWindow}!`);
             loadGlobalAppData();
         } else {
             alert("⚠️ Prep saved locally, but cloud sync encountered an issue.");
@@ -948,7 +948,15 @@ function renderCookChecklistGated() {
 
     container.innerHTML = '';
 
-    // 1. Bulletproof lookup to get the live employee record from Store.employees
+    // 1. STRT: Strict Role Check — Ensure Managers/GMs never render here
+    if (Store.role === 'manager' || Store.role === 'gm') {
+        if (typeof renderManagerChecklist === 'function') {
+            renderManagerChecklist();
+        }
+        return;
+    }
+
+    // 2. Find current employee record from Store.employees (where manager assignments live)
     const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
     const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
@@ -963,7 +971,7 @@ function renderCookChecklistGated() {
         Store.user = Object.assign({}, Store.user, currentEmp);
     }
 
-    // 2. Normalize assigned station key
+    // 3. Normalize assigned station key
     const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
     const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
 
@@ -972,9 +980,9 @@ function renderCookChecklistGated() {
         Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
     }
 
-    // 3. Extract Prep Window & Tasks safely
-    const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || null;
-    let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || [];
+    // 4. Extract Prep Window & Tasks safely with deep fallback checks
+    const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || currentEmp.PREPWINDOW || null;
+    let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
     
     if (typeof assignedTasks === 'string') {
         try { 
@@ -984,12 +992,12 @@ function renderCookChecklistGated() {
         }
     }
 
-    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || null;
+    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || currentEmp.SPECIALPROJECT || null;
     const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
 
     let assignmentCardsHtml = '';
 
-    // 4. Build Special Project Card (Appears First at the Top)
+    // 5. Build Special Project Card (Appears First at the Top)
     if (assignedProject) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
@@ -1007,7 +1015,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 5. Build Prep Tasks Card (Appears Second, right below Special Project)
+    // 6. Build Prep Tasks Card (Appears Second, right below Special Project)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
@@ -1030,7 +1038,7 @@ function renderCookChecklistGated() {
 
     container.innerHTML = assignmentCardsHtml;
 
-    // 6. Handle station gating check for native checklist
+    // 7. Handle station gating check for native checklist
     if (!Store.assignedStation || !Store.assignedChecklistKey) {
         const warningBanner = document.createElement('div');
         warningBanner.className = 'card';
@@ -1043,7 +1051,7 @@ function renderCookChecklistGated() {
         return;
     }
 
-    // 7. Render Native Station Checklist Banner & 15-Task Requirements Below Assignments
+    // 8. Render Native Station Checklist Banner & 15-Task Requirements Below Assignments
     const assignedKey = Store.assignedChecklistKey;
     const langKey = Store.lang || 'en';
     
@@ -1085,7 +1093,7 @@ function renderCookChecklistGated() {
         container.appendChild(sectionDiv);
     }
 
-    // 8. Action Buttons
+    // 9. Action Buttons
     const actionsDiv = document.createElement('div');
     actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
     actionsDiv.innerHTML = `
@@ -2956,7 +2964,7 @@ function loadGlobalAppData() {
             Store.recipes = response.recipes || [];
             Store.approvals = response.approvals || [];
             
-            // ⭐️ SYNC LOGGED-IN USER WITH LATEST EMPLOYEE RECORD FROM CLOUD/STORE
+            // Sync logged-in user with latest employee record from store
             if (Store.user && (Store.user.id || Store.user.ID)) {
                 const uId = String(Store.user.id || Store.user.ID).trim();
                 const matchedEmp = Store.employees.find(e => String(e.id || e.ID).trim() === uId);
@@ -2980,5 +2988,15 @@ function loadGlobalAppData() {
         }
     }).catch(err => {
         console.error("Failed to load global cloud data:", err);
+        const cached = localStorage.getItem('kitchenSyncGlobalStore');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            Store.shifts = parsed.shifts || [];
+            Store.employees = parsed.employees || [];
+            Store.certifications = parsed.certifications || [];
+            Store.messages = parsed.messages || [];
+            Store.recipes = parsed.recipes || [];
+            Store.approvals = parsed.approvals || [];
+        }
     });
 }
