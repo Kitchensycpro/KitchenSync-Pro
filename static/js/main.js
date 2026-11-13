@@ -984,7 +984,7 @@ function renderCookChecklistGated() {
 
     let assignmentCardsHtml = '';
 
-    // 4. Build Special Project Card (Appears First)
+    // 4. Build Special Project Card (Appears First at the Top)
     if (assignedProject) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
@@ -1002,7 +1002,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 5. Build Prep Tasks Card (Appears Second)
+    // 5. Build Prep Tasks Card (Appears Second, right below the Special Project)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
@@ -1023,6 +1023,7 @@ function renderCookChecklistGated() {
         `;
     }
 
+    // Append both assignment cards to the container first
     container.innerHTML = assignmentCardsHtml;
 
     // 6. Handle station gating check for native checklist
@@ -1038,11 +1039,10 @@ function renderCookChecklistGated() {
         return;
     }
 
-    // 7. Safely Render Native Station Checklist Banner & Tasks
+    // 7. Render Native Station Checklist Banner & 15-Task Requirements Below Assignments
     const assignedKey = Store.assignedChecklistKey;
     const langKey = Store.lang || 'en';
     
-    // Bulletproof lookup falling back safely if spec key doesn't exist
     const specs = (CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][assignedKey]) || 
                   (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][assignedKey]) || 
                   CHECKLIST_SPECS['range_open'] || 
@@ -1054,7 +1054,6 @@ function renderCookChecklistGated() {
     banner.innerHTML = `<h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3><p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>`;
     container.appendChild(banner);
 
-    // Extract item list safely supporting multiple schema structures
     let taskItems = [];
     if (specs.items) {
         if (Array.isArray(specs.items)) {
