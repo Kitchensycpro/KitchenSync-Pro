@@ -948,7 +948,7 @@ function renderCookChecklistGated() {
 
     container.innerHTML = '';
 
-    // 1. Find current employee record safely with bulletproof fallback lookup
+    // 1. Find current employee record from Store.employees (where manager assignments live)
     const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
     const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
     
@@ -956,9 +956,9 @@ function renderCookChecklistGated() {
         const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
         const eName = String(e.name || e.Name || "").trim().toLowerCase();
         return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
-    }) || {};
+    }) || Store.user || {};
 
-    // 2. Automatically sync and normalize assigned station from employee record or memory
+    // 2. Automatically sync and normalize assigned station
     const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
     const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
 
@@ -967,7 +967,7 @@ function renderCookChecklistGated() {
         Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
     }
 
-    // 3. Grab Prep Window & Tasks with exhaustive key checks and parsing fallbacks
+    // 3. Grab Prep Window & Tasks with deep fallbacks across employee and user objects
     const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || Store.user?.assignedPrepWindow || null;
     let assignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || Store.user?.assignedPrepTasks || [];
     
@@ -1002,7 +1002,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // 5. Build Prep Tasks Card (Appears Second, right below the Special Project)
+    // 5. Build Prep Tasks Card (Appears Second, right below Special Project)
     if (assignedWindow && Array.isArray(assignedTasks) && assignedTasks.length > 0) {
         assignmentCardsHtml += `
             <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
@@ -1023,7 +1023,7 @@ function renderCookChecklistGated() {
         `;
     }
 
-    // Append both assignment cards to the container first
+    // Inject assignment cards first
     container.innerHTML = assignmentCardsHtml;
 
     // 6. Handle station gating check for native checklist
@@ -2073,62 +2073,10 @@ function renderCookDashboard() {
     const container = document.getElementById('cook-dashboard-content');
     if (!container || !Store.user) return;
 
-    console.log("🔍 Store.user object on cook dashboard:", Store.user);
-
-    // 1. Bulletproof lookup to find the employee record across all possible property names
     const cookId = String(Store.user.id || Store.user.ID || Store.user.employeeId || Store.user.empId || "").trim();
     const cookName = String(Store.user.name || Store.user.Name || Store.user.username || "").trim().toLowerCase();
 
-    const currentEmployeeRecord = Store.employees.find(e => {
-        const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
-        const eName = String(e.name || e.Name || "").trim().toLowerCase();
-        return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
-    }) || {};
-
-    console.log("🔍 Matched employee record from Store.employees:", currentEmployeeRecord);
-
-    // 2. Grab Prep Duties (checking both employee record and Store.user)
-    const assignedWindow = currentEmployeeRecord.assignedPrepWindow || Store.user.assignedPrepWindow || currentEmployeeRecord.AssignedPrepWindow || null;
-    const assignedTasks = currentEmployeeRecord.assignedPrepTasks || Store.user.assignedPrepTasks || currentEmployeeRecord.AssignedPrepTasks || [];
-
-    // 3. Grab Special Projects (checking both employee record and Store.user)
-    const assignedProject = currentEmployeeRecord.specialProject || currentEmployeeRecord.SpecialProject || Store.user.specialProject || Store.user.SpecialProject || null;
-    const projectStatus = currentEmployeeRecord.specialProjectStatus || currentEmployeeRecord.SpecialProjectStatus || Store.user.specialProjectStatus || Store.user.SpecialProjectStatus || "Pending";
-
-    // 4. Build Read-Only Special Project Card HTML if assigned
-    const projectSectionHtml = assignedProject ? `
-        <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
-                <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
-            </div>
-            <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
-                ${assignedProject}
-            </p>
-        </div>
-    ` : '';
-
-    // 5. Build Read-Only Prep Duty Banner HTML if tasks are assigned
-    const prepSectionHtml = assignedWindow && assignedTasks.length > 0 ? `
-        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
-                <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
-            </div>
-            <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                ${assignedTasks.map((task) => `
-                    <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
-                        <span style="color: #166534; font-weight: bold;">📌</span>
-                        <span style="font-weight: 500;">${task}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    ` : '';
-
-    // 6. Filter shifts for the performance log table
+    // Filter shifts for completed & signed-off history log only
     const myShifts = Store.shifts.filter(s => {
         const sEmpId = String(s.empId || s.EmpId || "").trim();
         const sEmpName = String(s.empName || s.EmpName || "").trim().toLowerCase();
@@ -2176,21 +2124,8 @@ function renderCookDashboard() {
             </tr>`;
         }).join('');
 
-    // 7. Render complete layout sequence while preserving the native station checklist container
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
-            <h3 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Cook Station Checklist & Prep Task List (Read-Only)</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Review your assigned special projects, delegated prep duties, and active station requirements below.</p>
-        </div>
-
-        ${projectSectionHtml}
-        ${prepSectionHtml}
-
-        <div id="native-station-checklist-wrapper">
-            <!-- Native station checklist elements will render here -->
-        </div>
-
-        <div class="card" style="margin-top: 2rem; margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">${t('cookDashTitle') || 'Completed Shifts & Performance Log'}</h3>
             <p style="font-size: 0.85rem; color: #64748b;">${t('cookDashSub') || 'View your officially audited and manager-approved shift records below.'}</p>
         </div>
@@ -2208,15 +2143,8 @@ function renderCookDashboard() {
                 </thead>
                 <tbody>${rowsHtml}</tbody>
             </table>
-        </div>`;
-
-    // If your application has a secondary renderer function for the station checklist tasks, 
-    // we safely invoke it here so it populates inside #native-station-checklist-wrapper:
-    if (typeof window.renderActiveStationChecklist === 'function') {
-        window.renderActiveStationChecklist();
-    } else if (typeof window.renderStationChecklist === 'function') {
-        window.renderStationChecklist();
-    }
+        </div>
+    `;
 }
 function renderManagerDashboard() {
     const container = document.getElementById('manager-dashboard-content');
