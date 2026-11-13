@@ -30,6 +30,28 @@ const Store = {
     }
 };
 
+const KitchenLogger = {
+    info(context, message, data = {}) {
+        console.log(`%c[KitchenSync INFO] [${context}] %c${message}`, 'color: #0369a1; font-weight: bold;', 'color: #1e293b;', data);
+    },
+    warn(context, message, data = {}) {
+        console.warn(`%c[KitchenSync WARN] [${context}] %c${message}`, 'color: #d97706; font-weight: bold;', 'color: #1e293b;', data);
+    },
+    error(context, error, payload = {}) {
+        console.group(`%c[KitchenSync ERROR] [${context}] ❌ ${error.message || error}`, 'color: #dc2626; font-weight: bold; font-size: 1.1em;');
+        console.error("Error Object:", error);
+        console.table({
+            Context: context,
+            UserRole: Store.role,
+            UserId: Store.user?.id || Store.user?.ID || 'None',
+            AssignedStation: Store.assignedChecklistKey || 'None'
+        });
+        console.log("Attached Payload / State:", payload);
+        console.trace("Execution Stack Trace");
+        console.groupEnd();
+    }
+};
+
 const ApiService = {
     async request(action, payload) {
         try {
@@ -596,46 +618,56 @@ const PREP_DUTY_TASKS = [
 ];
 
 function assignPrepDuty() {
-    const empIdSelect = document.getElementById('prep-duty-emp');
-    const shiftWindowSelect = document.getElementById('prep-duty-window');
-    
-    if (!empIdSelect || !shiftWindowSelect) return;
-
-    const empId = empIdSelect.value;
-    const shiftWindow = shiftWindowSelect.value;
-
-    const checkedBoxes = document.querySelectorAll('.prep-task-checkbox:checked');
-    const selectedTasks = Array.from(checkedBoxes).map(cb => cb.value);
-
-    if (!empId || !shiftWindow || selectedTasks.length === 0) {
-        alert("Please select a cook, a shift time window, and at least one prep task.");
-        return;
-    }
-
-    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
-    if (!emp) {
-        alert("❌ Error: Selected employee could not be found.");
-        return;
-    }
-
-    // Save prep details with multiple property aliases to prevent lookup failures
-    emp.assignedPrepWindow = shiftWindow;
-    emp.AssignedPrepWindow = shiftWindow;
-    emp.assignedPrepTasks = selectedTasks;
-    emp.AssignedPrepTasks = selectedTasks;
-    emp.prepStatus = "Assigned / In Progress";
-
-    ApiService.request('saveEmployee', { employee: emp }).then(res => {
-        if (res && res.success) {
-            alert(`✅ Prep duty assigned successfully to ${emp.name || emp.Name} for ${shiftWindow}!`);
-            loadGlobalAppData();
-        } else {
-            alert("⚠️ Prep saved locally, but cloud sync encountered an issue.");
+    try {
+        const empIdSelect = document.getElementById('prep-duty-emp');
+        const shiftWindowSelect = document.getElementById('prep-duty-window');
+        
+        if (!empIdSelect || !shiftWindowSelect) {
+            KitchenLogger.warn("AssignPrep", "Prep form element IDs not found.");
+            return;
         }
-    }).catch(err => {
-        console.error("Error assigning prep duty:", err);
-        alert("❌ Network error connecting to backend.");
-    });
+
+        const empId = empIdSelect.value;
+        const shiftWindow = shiftWindowSelect.value;
+
+        const checkedBoxes = document.querySelectorAll('.prep-task-checkbox:checked');
+        const selectedTasks = Array.from(checkedBoxes).map(cb => cb.value);
+
+        KitchenLogger.info("AssignPrep", "Attempting to assign prep duties...", { empId, shiftWindow, selectedTasks });
+
+        if (!empId || !shiftWindow || selectedTasks.length === 0) {
+            alert("Please select a cook, a shift time window, and at least one prep task.");
+            return;
+        }
+
+        const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+        if (!emp) {
+            alert("❌ Error: Selected employee could not be found.");
+            return;
+        }
+
+        emp.assignedPrepWindow = shiftWindow;
+        emp.AssignedPrepWindow = shiftWindow;
+        emp.assignedPrepTasks = selectedTasks;
+        emp.AssignedPrepTasks = selectedTasks;
+        emp.prepStatus = "Assigned / In Progress";
+
+        ApiService.request('saveEmployee', { employee: emp }).then(res => {
+            if (res && res.success) {
+                KitchenLogger.info("AssignPrep", "Prep duty saved successfully to backend.");
+                alert(`✅ Prep duty assigned successfully to ${emp.name || emp.Name} for ${shiftWindow}!`);
+                loadGlobalAppData();
+            } else {
+                alert("⚠️ Prep saved locally, but cloud sync encountered an issue.");
+            }
+        }).catch(err => {
+            KitchenLogger.error("AssignPrep", err, { employee: emp });
+            alert("❌ Network error connecting to backend.");
+        });
+
+    } catch (e) {
+        KitchenLogger.error("AssignPrep", e);
+    }
 }
 function renderGMManagerAssignmentWidget(targetId = 'gm-mod-widget-box') {
     const container = document.getElementById(targetId);
@@ -944,176 +976,189 @@ function finalizeLogin() {
 }
 
 function renderCookChecklistGated() {
-    const container = document.getElementById('checklist-container');
-    if (!container) return;
+    try {
+        KitchenLogger.info("CookChecklist", "Initializing cook checklist render sequence...", { user: Store.user });
 
-    container.innerHTML = '';
-
-    // 1. Strict Role Check — Ensure Managers/GMs never render here
-    if (Store.role === 'manager' || Store.role === 'gm') {
-        if (typeof renderManagerChecklist === 'function') {
-            renderManagerChecklist();
+        const container = document.getElementById('checklist-container');
+        if (!container) {
+            KitchenLogger.warn("CookChecklist", "DOM element #checklist-container not found on active view.");
+            return;
         }
-        return;
-    }
 
-    // 2. Find current employee record from Store.employees
-    const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
-    const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
-    
-    const currentEmp = Store.employees.find(e => {
-        const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
-        const eName = String(e.name || e.Name || "").trim().toLowerCase();
-        return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
-    }) || Store.user || {};
+        container.innerHTML = '';
 
-    if (currentEmp && Object.keys(currentEmp).length > 0) {
-        Store.user = Object.assign({}, Store.user, currentEmp);
-    }
-
-    // 3. Normalize assigned station key
-    const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
-    const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
-
-    if (normalizedStationKey) {
-        Store.assignedChecklistKey = normalizedStationKey;
-        Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
-    }
-
-    // 4. Extract & Bulletproof Parse Prep Window & Tasks
-    const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || currentEmp.PREPWINDOW || null;
-    let rawAssignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
-    
-    let assignedTasks = [];
-    if (Array.isArray(rawAssignedTasks)) {
-        assignedTasks = rawAssignedTasks;
-    } else if (typeof rawAssignedTasks === 'string') {
-        try { 
-            const parsed = JSON.parse(rawAssignedTasks);
-            assignedTasks = Array.isArray(parsed) ? parsed : [rawAssignedTasks];
-        } catch(e) { 
-            assignedTasks = rawAssignedTasks.split(',').map(t => t.trim()).filter(Boolean);
+        // Strict Role Check — Ensure Managers/GMs never render here
+        if (Store.role === 'manager' || Store.role === 'gm') {
+            KitchenLogger.info("CookChecklist", "Manager/GM role detected. Bypassing cook view.");
+            if (typeof renderManagerChecklist === 'function') {
+                renderManagerChecklist();
+            }
+            return;
         }
-    } else if (typeof rawAssignedTasks === 'object' && rawAssignedTasks !== null) {
-        assignedTasks = Object.values(rawAssignedTasks);
-    }
 
-    const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || currentEmp.SPECIALPROJECT || null;
-    const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
-
-    let assignmentCardsHtml = '';
-
-    // 5. Build Special Project Card (Appears First at the Top)
-    if (assignedProject) {
-        assignmentCardsHtml += `
-            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
-                    <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
-                </div>
-                <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
-                    ${assignedProject}
-                </p>
-                <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background: #ea580c; color: white; border: none;" onclick="completeSpecialProject()">Mark Project Complete ✅</button>
-                </div>
-            </div>
-        `;
-    }
-
-    // 6. Build Prep Tasks Card (Appears Second, right below Special Project)
-    if (assignedWindow && assignedTasks.length > 0) {
-        assignmentCardsHtml += `
-            <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
-                    <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
-                </div>
-                <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    ${assignedTasks.map(task => `
-                        <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
-                            <span style="color: #166534; font-weight: bold;">📌</span>
-                            <span style="font-weight: 500;">${typeof task === 'object' ? (task.label || task.text || JSON.stringify(task)) : task}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    }
-
-    container.innerHTML = assignmentCardsHtml;
-
-    // 7. Handle station gating check for native checklist
-    if (!Store.assignedStation || !Store.assignedChecklistKey) {
-        const warningBanner = document.createElement('div');
-        warningBanner.className = 'card';
-        warningBanner.style.cssText = 'background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;';
-        warningBanner.innerHTML = `
-            <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Station Access Pending</h3>
-            <p style="color: #92400e; font-size: 0.95rem;">No station checklist has been assigned to you yet by a Manager.</p>
-        `;
-        container.appendChild(warningBanner);
-        return;
-    }
-
-    // 8. Render Read-Only Native Station Checklist Banner & 15-Task Requirements
-    const assignedKey = Store.assignedChecklistKey;
-    const langKey = Store.lang || 'en';
-    
-    const specs = (CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][assignedKey]) || 
-                  (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][assignedKey]) || 
-                  CHECKLIST_SPECS['range_open'] || 
-                  { title: { en: Store.assignedStation }, items: { en: [] } };
-
-    const banner = document.createElement('div');
-    banner.className = 'card';
-    banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
-    banner.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3>
-                <p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>
-            </div>
-            <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only Station View</span>
-        </div>
-    `;
-    container.appendChild(banner);
-
-    let taskItems = [];
-    if (specs.items) {
-        if (Array.isArray(specs.items)) {
-            taskItems = specs.items;
-        } else {
-            taskItems = specs.items[langKey] || specs.items['en'] || [];
-        }
-    }
-
-    if (taskItems.length > 0) {
-        let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements (Read-Only)</h3>`;
+        // Find current employee record from Store.employees
+        const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
+        const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
         
-        taskItems.forEach((taskText, idx) => {
-            html += `
-                <div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;">
-                    <input type="checkbox" class="task-checkbox" id="cb-cook-${idx}" disabled style="cursor: not-allowed; width: 18px; height: 18px;">
-                    <div class="task-desc" style="font-size:0.85rem; color:#1e293b; font-weight: 500;">${taskText}</div>
+        const currentEmp = Store.employees.find(e => {
+            const eId = String(e.id || e.ID || e.employeeId || e.empId || "").trim();
+            const eName = String(e.name || e.Name || "").trim().toLowerCase();
+            return (cookId !== "" && eId === cookId) || (cookName !== "" && eName === cookName);
+        }) || Store.user || {};
+
+        if (currentEmp && Object.keys(currentEmp).length > 0) {
+            Store.user = Object.assign({}, Store.user, currentEmp);
+        }
+
+        // Normalize assigned station key
+        const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
+        const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
+
+        if (normalizedStationKey) {
+            Store.assignedChecklistKey = normalizedStationKey;
+            Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
+        }
+
+        // Extract & Parse Prep Window & Tasks
+        const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || currentEmp.PREPWINDOW || null;
+        let rawAssignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
+        
+        let assignedTasks = [];
+        if (Array.isArray(rawAssignedTasks)) {
+            assignedTasks = rawAssignedTasks;
+        } else if (typeof rawAssignedTasks === 'string') {
+            try { 
+                const parsed = JSON.parse(rawAssignedTasks);
+                assignedTasks = Array.isArray(parsed) ? parsed : [rawAssignedTasks];
+            } catch(e) { 
+                assignedTasks = rawAssignedTasks.split(',').map(t => t.trim()).filter(Boolean);
+            }
+        } else if (typeof rawAssignedTasks === 'object' && rawAssignedTasks !== null) {
+            assignedTasks = Object.values(rawAssignedTasks);
+        }
+
+        // 🔍 CONSOLE DIAGNOSTIC LOG: Check your browser console to see what prep data exists here!
+        KitchenLogger.info("CookChecklist", "Prep Data Diagnostic Check", { assignedWindow, rawAssignedTasks, assignedTasks, currentEmp });
+
+        const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || currentEmp.SPECIALPROJECT || null;
+        const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
+
+        let assignmentCardsHtml = '';
+
+        // Build Special Project Card (Appears First at the Top)
+        if (assignedProject) {
+            assignmentCardsHtml += `
+                <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty</h4>
+                        <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${projectStatus}</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                        ${assignedProject}
+                    </p>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background: #ea580c; color: white; border: none;" onclick="completeSpecialProject()">Mark Project Complete ✅</button>
+                    </div>
                 </div>
             `;
-        });
-        
-        const sectionDiv = document.createElement('div');
-        sectionDiv.className = 'card checklist-section';
-        sectionDiv.innerHTML = html;
-        container.appendChild(sectionDiv);
-    }
+        }
 
-    // 9. Action Buttons (Print Button Restored, Submit Button Removed)
-    const actionsDiv = document.createElement('div');
-    actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
-    actionsDiv.innerHTML = `
-        <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
-    `;
-    container.appendChild(actionsDiv);
+        // Build Prep Tasks Card (Appears Second, right below Special Project)
+        if (assignedWindow && assignedTasks.length > 0) {
+            assignmentCardsHtml += `
+                <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
+                        <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        ${assignedTasks.map(task => `
+                            <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
+                                <span style="color: #166534; font-weight: bold;">📌</span>
+                                <span style="font-weight: 500;">${typeof task === 'object' ? (task.label || task.text || JSON.stringify(task)) : task}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = assignmentCardsHtml;
+
+        // Handle station gating check for native checklist
+        if (!Store.assignedStation || !Store.assignedChecklistKey) {
+            const warningBanner = document.createElement('div');
+            warningBanner.className = 'card';
+            warningBanner.style.cssText = 'background: #fffbeb; border: 1px solid #fde68a; text-align: center; padding: 2.5rem;';
+            warningBanner.innerHTML = `
+                <h3 style="color: #b45309; margin-top: 0;">👨‍🍳 Station Access Pending</h3>
+                <p style="color: #92400e; font-size: 0.95rem;">No station checklist has been assigned to you yet by a Manager.</p>
+            `;
+            container.appendChild(warningBanner);
+            return;
+        }
+
+        // Render Read-Only Native Station Checklist Banner & 15-Task Requirements
+        const assignedKey = Store.assignedChecklistKey;
+        const langKey = Store.lang || 'en';
+        
+        const specs = (CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][assignedKey]) || 
+                      (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][assignedKey]) || 
+                      CHECKLIST_SPECS['range_open'] || 
+                      { title: { en: Store.assignedStation }, items: { en: [] } };
+
+        const banner = document.createElement('div');
+        banner.className = 'card';
+        banner.style.cssText = 'margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;';
+        banner.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="color: #166534; margin: 0;">${t('assignedStationLabel')} ${Store.assignedStation}</h3>
+                    <p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">${t('assignedStationSub')}</p>
+                </div>
+                <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only Station View</span>
+            </div>
+        `;
+        container.appendChild(banner);
+
+        let taskItems = [];
+        if (specs.items) {
+            if (Array.isArray(specs.items)) {
+                taskItems = specs.items;
+            } else {
+                taskItems = specs.items[langKey] || specs.items['en'] || [];
+            }
+        }
+
+        if (taskItems.length > 0) {
+            let html = `<h3 class="checklist-section-title" style="color:#1e3a8a; margin-bottom:0.75rem;">📝 Active Station Requirements (Read-Only)</h3>`;
+            
+            taskItems.forEach((taskText, idx) => {
+                html += `
+                    <div class="task-row" style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+                        <input type="checkbox" class="task-checkbox" id="cb-cook-${idx}" disabled style="cursor: not-allowed; width: 18px; height: 18px;">
+                        <div class="task-desc" style="font-size:0.85rem; color:#1e293b; font-weight: 500;">${taskText}</div>
+                    </div>
+                `;
+            });
+            
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'card checklist-section';
+            sectionDiv.innerHTML = html;
+            container.appendChild(sectionDiv);
+        }
+
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
+        actionsDiv.innerHTML = `
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
+        `;
+        container.appendChild(actionsDiv);
+
+    } catch (err) {
+        KitchenLogger.error("CookChecklist", err, { StoreUser: Store.user, Employees: Store.employees });
+    }
 }
 function renderManagerChecklist() {
     const container = document.getElementById('manager-checklist-content');
@@ -2968,48 +3013,44 @@ function deleteEmployee(empId) {
 }
 
 function loadGlobalAppData() {
-    ApiService.request('getAppData', {}).then(response => {
-        if (response && response.success) {
-            Store.shifts = response.shifts || [];
-            Store.employees = response.employees || [];
-            Store.certifications = response.certifications || [];
-            Store.messages = response.messages || [];
-            Store.recipes = response.recipes || [];
-            Store.approvals = response.approvals || [];
-            
-            // Sync logged-in user with latest employee record from store
-            if (Store.user && (Store.user.id || Store.user.ID)) {
-                const uId = String(Store.user.id || Store.user.ID).trim();
-                const matchedEmp = Store.employees.find(e => String(e.id || e.ID).trim() === uId);
-                if (matchedEmp) {
-                    Store.user = Object.assign({}, Store.user, matchedEmp);
+    try {
+        KitchenLogger.info("AppData", "Fetching global app data from cloud backend...");
+        ApiService.request('getAppData', {}).then(response => {
+            if (response && response.success) {
+                Store.shifts = response.shifts || [];
+                Store.employees = response.employees || [];
+                Store.certifications = response.certifications || [];
+                Store.messages = response.messages || [];
+                Store.recipes = response.recipes || [];
+                Store.approvals = response.approvals || [];
+                
+                // Sync logged-in user with latest employee record from store
+                if (Store.user && (Store.user.id || Store.user.ID)) {
+                    const uId = String(Store.user.id || Store.user.ID).trim();
+                    const matchedEmp = Store.employees.find(e => String(e.id || e.ID).trim() === uId);
+                    if (matchedEmp) {
+                        Store.user = Object.assign({}, Store.user, matchedEmp);
+                        KitchenLogger.info("AppData", "Synced Store.user with fresh employee record.", { user: Store.user });
+                    }
+                }
+
+                localStorage.setItem('kitchenSyncGlobalStore', JSON.stringify({
+                    shifts: Store.shifts,
+                    employees: Store.employees,
+                    certifications: Store.certifications,
+                    messages: Store.messages,
+                    recipes: Store.recipes,
+                    approvals: Store.approvals
+                }));
+
+                if (typeof UIController !== 'undefined' && UIController.refreshActiveView) {
+                    UIController.refreshActiveView();
                 }
             }
-
-            localStorage.setItem('kitchenSyncGlobalStore', JSON.stringify({
-                shifts: Store.shifts,
-                employees: Store.employees,
-                certifications: Store.certifications,
-                messages: Store.messages,
-                recipes: Store.recipes,
-                approvals: Store.approvals
-            }));
-
-            if (typeof UIController !== 'undefined' && UIController.refreshActiveView) {
-                UIController.refreshActiveView();
-            }
-        }
-    }).catch(err => {
-        console.error("Failed to load global cloud data:", err);
-        const cached = localStorage.getItem('kitchenSyncGlobalStore');
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            Store.shifts = parsed.shifts || [];
-            Store.employees = parsed.employees || [];
-            Store.certifications = parsed.certifications || [];
-            Store.messages = parsed.messages || [];
-            Store.recipes = parsed.recipes || [];
-            Store.approvals = parsed.approvals || [];
-        }
-    });
+        }).catch(err => {
+            KitchenLogger.error("AppData", err);
+        });
+    } catch (e) {
+        KitchenLogger.error("AppData", e);
+    }
 }
