@@ -554,7 +554,6 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         return;
     }
 
-    // Save with both case variants
     emp.station = stationKey;
     emp.Station = stationKey;
 
@@ -563,8 +562,21 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
 
-    const stationSpec = CHECKLIST_SPECS['en'][stationKey] || CHECKLIST_SPECS[stationKey];
-    const taskItemsText = (stationSpec && stationSpec.items) ? (stationSpec.items['en'] || stationSpec.items) : [];
+    const langKey = Store.lang || 'en';
+    const stationSpec = (typeof CHECKLIST_SPECS !== 'undefined' && 
+        ((CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][stationKey]) || 
+         (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][stationKey]) || 
+         CHECKLIST_SPECS[stationKey])) || { items: { en: [] } };
+
+    let taskItemsText = [];
+    if (stationSpec.items) {
+        if (Array.isArray(stationSpec.items)) {
+            taskItemsText = stationSpec.items;
+        } else {
+            taskItemsText = stationSpec.items[langKey] || stationSpec.items['en'] || [];
+        }
+    }
+
     const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
 
     const initialShift = {
@@ -590,10 +602,9 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
 
     Store.shifts.push(initialShift);
 
-    Promise.all([
-        ApiService.request('saveEmployee', { employee: emp }),
-        ApiService.request('saveShift', { shift: initialShift })
-    ]).then(() => {
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        return ApiService.request('saveShift', { shift: initialShift });
+    }).then(() => {
         alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${stationKey.replace(/_/g, ' ').toUpperCase()}!`);
         loadGlobalAppData();
     }).catch(err => {
@@ -977,26 +988,20 @@ function finalizeLogin() {
 
 function renderCookChecklistGated() {
     try {
-        KitchenLogger.info("CookChecklist", "Initializing cook checklist render sequence...", { user: Store.user });
-
         const container = document.getElementById('checklist-container');
-        if (!container) {
-            KitchenLogger.warn("CookChecklist", "DOM element #checklist-container not found on active view.");
-            return;
-        }
+        if (!container) return;
 
         container.innerHTML = '';
 
-        // Strict Role Check — Ensure Managers/GMs never render here
+        // 1. Strict Role Check — Ensure Managers/GMs never render here
         if (Store.role === 'manager' || Store.role === 'gm') {
-            KitchenLogger.info("CookChecklist", "Manager/GM role detected. Bypassing cook view.");
             if (typeof renderManagerChecklist === 'function') {
                 renderManagerChecklist();
             }
             return;
         }
 
-        // Find current employee record from Store.employees
+        // 2. Find current employee record from Store.employees
         const cookId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || Store.user?.empId || "").trim();
         const cookName = String(Store.user?.name || Store.user?.Name || Store.user?.username || "").trim().toLowerCase();
         
@@ -1010,7 +1015,7 @@ function renderCookChecklistGated() {
             Store.user = Object.assign({}, Store.user, currentEmp);
         }
 
-        // Normalize assigned station key
+        // 3. Normalize assigned station key
         const rawStationKey = Store.assignedChecklistKey || currentEmp.station || currentEmp.Station || Store.user?.station || "";
         const normalizedStationKey = String(rawStationKey).trim().toLowerCase().replace(/\s+/g, '_');
 
@@ -1019,7 +1024,7 @@ function renderCookChecklistGated() {
             Store.assignedStation = normalizedStationKey.replace(/_/g, ' ').toUpperCase();
         }
 
-        // Extract & Parse Prep Window & Tasks
+        // 4. Extract & Bulletproof Parse Prep Window & Tasks
         const assignedWindow = currentEmp.assignedPrepWindow || currentEmp.AssignedPrepWindow || currentEmp.prepWindow || currentEmp.PREPWINDOW || null;
         let rawAssignedTasks = currentEmp.assignedPrepTasks || currentEmp.AssignedPrepTasks || currentEmp.prepTasks || currentEmp.tasks || currentEmp.TASKS || [];
         
@@ -1037,15 +1042,12 @@ function renderCookChecklistGated() {
             assignedTasks = Object.values(rawAssignedTasks);
         }
 
-        // 🔍 CONSOLE DIAGNOSTIC LOG: Check your browser console to see what prep data exists here!
-        KitchenLogger.info("CookChecklist", "Prep Data Diagnostic Check", { assignedWindow, rawAssignedTasks, assignedTasks, currentEmp });
-
         const assignedProject = currentEmp.specialProject || currentEmp.SpecialProject || currentEmp.SPECIALPROJECT || null;
         const projectStatus = currentEmp.specialProjectStatus || currentEmp.SpecialProjectStatus || "Pending";
 
         let assignmentCardsHtml = '';
 
-        // Build Special Project Card (Appears First at the Top)
+        // 5. Build Special Project Card (Appears First at the Top - Orange Theme)
         if (assignedProject) {
             assignmentCardsHtml += `
                 <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
@@ -1063,19 +1065,19 @@ function renderCookChecklistGated() {
             `;
         }
 
-        // Build Prep Tasks Card (Appears Second, right below Special Project)
+        // 6. Build Prep Tasks Card (Appears Second - Distinct Emerald Green Theme)
         if (assignedWindow && assignedTasks.length > 0) {
             assignmentCardsHtml += `
-                <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+                <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #047857;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h4 style="color: #166534; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
-                        <span style="background: #dcfce7; color: #166534; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #bbf7d0;">Read-Only Prep List</span>
+                        <h4 style="color: #065f46; margin: 0;">📋 Assigned Prep Duties (${assignedWindow})</h4>
+                        <span style="background: #d1fae5; color: #065f46; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #a7f3d0;">Read-Only Prep List</span>
                     </div>
-                    <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
+                    <p style="font-size: 0.85rem; color: #047857; margin-bottom: 10px;">Review your delegated dead-time tasks for this window:</p>
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         ${assignedTasks.map(task => `
-                            <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #bbf7d0;">
-                                <span style="color: #166534; font-weight: bold;">📌</span>
+                            <div style="font-size: 0.9rem; display: flex; align-items: center; gap: 10px; color: #1e293b; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #a7f3d0;">
+                                <span style="color: #047857; font-weight: bold;">📌</span>
                                 <span style="font-weight: 500;">${typeof task === 'object' ? (task.label || task.text || JSON.stringify(task)) : task}</span>
                             </div>
                         `).join('')}
@@ -1086,7 +1088,7 @@ function renderCookChecklistGated() {
 
         container.innerHTML = assignmentCardsHtml;
 
-        // Handle station gating check for native checklist
+        // 7. Handle station gating check for native checklist
         if (!Store.assignedStation || !Store.assignedChecklistKey) {
             const warningBanner = document.createElement('div');
             warningBanner.className = 'card';
@@ -1099,12 +1101,13 @@ function renderCookChecklistGated() {
             return;
         }
 
-        // Render Read-Only Native Station Checklist Banner & 15-Task Requirements
+        // 8. Render Read-Only Native Station Checklist Banner & 15-Task Requirements (Appears Last)
         const assignedKey = Store.assignedChecklistKey;
         const langKey = Store.lang || 'en';
         
         const specs = (CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][assignedKey]) || 
                       (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][assignedKey]) || 
+                      CHECKLIST_SPECS[assignedKey] || 
                       CHECKLIST_SPECS['range_open'] || 
                       { title: { en: Store.assignedStation }, items: { en: [] } };
 
@@ -1157,7 +1160,7 @@ function renderCookChecklistGated() {
         container.appendChild(actionsDiv);
 
     } catch (err) {
-        KitchenLogger.error("CookChecklist", err, { StoreUser: Store.user, Employees: Store.employees });
+        console.error("Error rendering cook checklist:", err);
     }
 }
 function renderManagerChecklist() {
