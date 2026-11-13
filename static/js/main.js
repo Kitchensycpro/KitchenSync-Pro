@@ -1152,12 +1152,21 @@ function renderCookChecklistGated() {
             container.appendChild(sectionDiv);
         }
 
+        // 9. Action Buttons (Print Button Only - Strictly NO MOD checklist components allowed)
         const actionsDiv = document.createElement('div');
         actionsDiv.style.cssText = 'margin-top: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;';
         actionsDiv.innerHTML = `
             <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
         `;
         container.appendChild(actionsDiv);
+
+        // ⭐️ Final sweep to ensure any stray MOD checklist elements are scrubbed from container
+        const strayElements = container.querySelectorAll('.mod-checklist, [id*="mod"], [class*="mod"]');
+        strayElements.forEach(el => {
+            if (!el.textContent.includes('Special Project') && !el.textContent.includes('Prep Duties')) {
+                el.remove();
+            }
+        });
 
     } catch (err) {
         console.error("Error rendering cook checklist:", err);
