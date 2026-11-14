@@ -138,6 +138,20 @@ const TRANSLATIONS = {
         assignedStationSub: "Complete todos los elementos de verificación a continuación para cumplir con HACCP."
     }
 };
+// Enforces exact Massachusetts (Eastern Time) date string: "YYYY-MM-DD"
+function getETDateString(dateObj = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(dateObj);
+}
+
+// In your dashboard setup:
+if (!Store.selectedShiftDate) {
+    Store.selectedShiftDate = getETDateString(); // Evaluates to "2026-11-13" correctly in MA
+}
 
 function toggleLanguage() {
     Store.lang = Store.lang === 'en' ? 'es' : 'en';
@@ -1588,11 +1602,10 @@ function buildNavForRole(role) {
             { id: 'roster', label: t('staffRoster') }
         ];
     } else if (role === 'gm') {
-        // Second tab renamed to Management Message Board with only message-board functionality
+        // Shift Manager tab removed entirely; Message Board tab houses the full widget
         tabs = [
             { id: 'gm-dashboard', label: t('gmSuite') },
             { id: 'message-board', label: '💬 Management Message Board' },
-            { id: 'manager-dashboard', label: t('managerDashboard') },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
             { id: 'roster', label: t('staffRoster') }
@@ -1610,9 +1623,31 @@ function buildNavForRole(role) {
 function switchTab(viewId, btnEl) {
     document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    
     document.getElementById(`view-${viewId}`)?.classList.add('active');
     btnEl?.classList.add('active');
-    UIController.refreshActiveView();
+
+    // Trigger specific rendering functions based on active view/tab selection
+    if (viewId === 'message-board') {
+        if (typeof renderMessageBoardTab === 'function') {
+            renderMessageBoardTab();
+        }
+    } else if (viewId === 'gm-dashboard') {
+        if (typeof renderGMDashboard === 'function') {
+            renderGMDashboard();
+        }
+    } else if (viewId === 'shift-entry') {
+        // Renders either Shift Manager tab or Manager Assignments depending on user role
+        if (Store.user && String(Store.user.role || '').toLowerCase() === 'manager') {
+            if (typeof renderManagerAssignmentsTab === 'function') {
+                renderManagerAssignmentsTab();
+            }
+        }
+    }
+
+    if (typeof UIController !== 'undefined' && typeof UIController.refreshActiveView === 'function') {
+        UIController.refreshActiveView();
+    }
 }
 
 function renderChecklists() {
@@ -3198,6 +3233,57 @@ function renderGMDashboard() {
                 </tbody>
             </table>
         </div>`;
+}
+function renderMessageBoardTab() {
+    const container = document.getElementById('message-board-container') || document.getElementById('message-board');
+    if (!container) return;
+
+    // Format current Massachusetts date & time for posting
+    const nowET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">💬 Management Message Board</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Centralized communication channel for shift logs, inventory counts, and maintenance alerts.</p>
+        </div>
+
+        <!-- Post Message Box -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">✍️ Post New Message / Log</h4>
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Category:</label>
+                <select id="msg-board-category" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                    <option value="General">📌 General Operational Log</option>
+                    <option value="Inventory / 86 List">🍅 Inventory / 86 Items</option>
+                    <option value="Staffing / Attendance">👥 Staffing & Attendance</option>
+                    <option value="Maintenance">🔧 Equipment Maintenance</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Message / Note:</label>
+                <textarea id="msg-board-text" rows="3" placeholder="Type operational log, 86 item, or maintenance note here..." style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;"></textarea>
+            </div>
+            <button class="btn btn-primary" style="background: #1e3a8a; border: none; padding: 8px 16px;" onclick="postMessageBoardItem()">Post to Message Board 🚀</button>
+        </div>
+
+        <!-- Message Feed Display -->
+        <div class="card">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📜 Active Message Log (${nowET})</h4>
+            <div id="message-board-feed" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 10px;">
+                ${(!Store.messages || Store.messages.length === 0) ? 
+                    `<p style="color: #64748b; font-style: italic; text-align: center;">No messages logged yet.</p>` :
+                    Store.messages.slice().reverse().map(msg => `
+                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <strong style="color: #1e3a8a; font-size: 0.9rem;">${msg.author || msg.Author || 'Management'} (${msg.category || msg.Category || 'General'})</strong>
+                                <span style="font-size: 0.75rem; color: #64748b;">${msg.date || msg.Date || nowET}</span>
+                            </div>
+                            <p style="margin: 0; font-size: 0.9rem; color: #334155;">${msg.text || msg.Text || msg.message || ''}</p>
+                        </div>
+                    `).join('')}
+            </div>
+        </div>
+    `;
 }
 function renderShiftManagerTab() {
     const container = document.getElementById('shift-entry') || document.getElementById('shift-manager-container');
