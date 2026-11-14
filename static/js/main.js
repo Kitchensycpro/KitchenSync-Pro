@@ -2095,6 +2095,31 @@ function managerSignOffShift(shiftId) {
         alert("❌ Network error connecting to backend.");
     });
 }
+function gmSignOffCookProject(empId) {
+    const cook = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!cook) {
+        alert("❌ Error: Employee record not found.");
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    cook.gmAuditSignOff = true;
+    cook.GmAuditSignOff = true;
+    cook.auditDate = today;
+    cook.specialProjectStatus = "Completed & Audited ✅";
+
+    ApiService.request('saveEmployee', { employee: cook }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Audit sign-off recorded successfully for ${cook.name || cook.Name} on ${today}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error recording audit sign-off:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
 function managerSignOffSpecialProject(empId) {
     if (Store.role !== 'manager' && Store.role !== 'gm') {
         alert("❌ Unauthorized: Manager or GM role required.");
@@ -2865,9 +2890,7 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- UNIFIED COOK ASSIGNMENTS BOX (WITH SPECIAL PROJECT) -->
-        <!-- ========================================== -->
+        <!-- UNIFIED COOK ASSIGNMENTS BOX -->
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments, Prep & Special Projects</h4>
             <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Manage station shifts, window prep tasks, and special project/extra duty delegations for kitchen staff.</p>
@@ -2918,21 +2941,19 @@ function renderGMDashboard() {
             <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 1rem;">
                 <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Delegate:</label>
                 <div style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px;">
-                    ${PREP_DUTY_TASKS.map(task => `
+                    ${typeof PREP_DUTY_TASKS !== 'undefined' ? PREP_DUTY_TASKS.map(task => `
                         <label style="font-size: 0.8rem; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: #1e293b;">
                             <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
                             <span>${task}</span>
                         </label>
-                    `).join('')}
+                    `).join('') : ''}
                 </div>
             </div>
 
             <button class="btn btn-primary" style="background-color: #166534; border-color: #166534; width: 100%;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
         </div>
 
-        <!-- ========================================== -->
-        <!-- COOK SHIFT AUDITS TABLE (DIRECTLY BELOW)   -->
-        <!-- ========================================== -->
+        <!-- COOK SHIFT AUDITS TABLE -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
@@ -3002,15 +3023,68 @@ function renderGMDashboard() {
         </div>
 
         <!-- ========================================== -->
-        <!-- MANAGER ASSIGNMENTS & EXTRA DUTIES WIDGET  -->
+        <!-- COOK SPECIAL PROJECTS & PREP DUTIES AUDIT   -->
         <!-- ========================================== -->
+        <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #166534;">
+            <h4 style="color: #166534; margin-top: 0;">📋 Cook Special Projects & Prep Duty Audit Trail</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties.</p>
+            
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Date Stamped</th>
+                        <th>Cook Name</th>
+                        <th>Delegated Task / Special Project</th>
+                        <th>Status</th>
+                        <th>GM Audit Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${(() => {
+                        const auditedCooks = Store.employees.filter(e => {
+                            const hasProj = e.specialProject || e.SpecialProject;
+                            return hasProj;
+                        });
+
+                        if (auditedCooks.length === 0) {
+                            return `<tr><td colspan="5" style="text-align: center; color: #64748b;">No special projects logged for audit.</td></tr>`;
+                        }
+
+                        return auditedCooks.map(cook => {
+                            const cName = cook.name || cook.Name || 'Cook';
+                            const proj = cook.specialProject || cook.SpecialProject || 'None Assigned';
+                            const projStatus = cook.specialProjectStatus || cook.SpecialProjectStatus || 'Pending';
+                            const timestamp = cook.auditDate || lookupDate;
+                            const isSignedOff = cook.gmAuditSignOff === true || String(cook.gmAuditSignOff).toLowerCase() === 'true';
+                            const cookId = cook.id || cook.ID;
+
+                            return `
+                                <tr>
+                                    <td><span style="font-size: 0.85rem; color: #475569; font-weight: 600;">${timestamp}</span></td>
+                                    <td><strong>${cName}</strong></td>
+                                    <td>${proj}</td>
+                                    <td><span style="font-weight: bold; color: ${projStatus.includes('Complete') ? '#166534' : '#c2410c'};">${projStatus}</span></td>
+                                    <td>
+                                        ${isSignedOff ? 
+                                            '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ GM Verified</span>' : 
+                                            `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem; background: #166534;" onclick="gmSignOffCookProject('${cookId}')">Audit Sign-Off ✍️</button>`
+                                        }
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    })()}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MANAGER ASSIGNMENTS & EXTRA DUTIES WIDGET -->
         <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
                 
-                <!-- Extra Duty Assignment Sub-box -->
                 <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
                     <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
                     <div style="margin-bottom: 8px;">
@@ -3030,7 +3104,6 @@ function renderGMDashboard() {
                     <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
                 </div>
 
-                <!-- Manager Checklist Assignment Sub-box -->
                 <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
                     <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
                     <div style="margin-bottom: 8px;">
@@ -3053,9 +3126,7 @@ function renderGMDashboard() {
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MANAGER SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
-        <!-- ========================================== -->
+        <!-- MANAGER SHIFT AUDITS TABLE -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Shift Audits (MOD Oversight)</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Review, score, and audit Manager on Duty (MOD) opening and closing checklists.</p>
@@ -3270,12 +3341,9 @@ function renderShiftManagerTab() {
     `;
 }
 function renderManagerAssignmentsTab() {
-    const container = document.getElementById('manager-assignments-container') || document.getElementById('checklist-container');
+    const container = document.getElementById('shift-entry') || document.getElementById('manager-assignments-container') || document.getElementById('checklist-container');
     if (!container) return;
 
-    container.innerHTML = '';
-
-    // Find current manager profile
     const mgrId = String(Store.user?.id || Store.user?.ID || "").trim();
     const currentMgr = Store.employees.find(e => String(e.id || e.ID).trim() === mgrId) || Store.user || {};
 
@@ -3283,16 +3351,13 @@ function renderManagerAssignmentsTab() {
     const dutyStatus = currentMgr.managerExtraDutyStatus || currentMgr.ManagerExtraDutyStatus || "Pending";
     const assignedChecklistType = currentMgr.assignedManagerChecklist || currentMgr.AssignedManagerChecklist || "No Checklist Assigned Yet";
 
-    let htmlContent = `
+    container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Personal Checklist</h3>
             <p style="font-size: 0.85rem; color: #64748b;">Read-only operational duties and shift assignments delegated by the General Manager.</p>
         </div>
-    `;
 
-    // Read-Only Extra Duty Card
-    if (extraDuty) {
-        htmlContent += `
+        ${extraDuty ? `
             <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Manager Extra Duty (READ-ONLY)</h4>
@@ -3305,23 +3370,18 @@ function renderManagerAssignmentsTab() {
                     <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.80rem; background: #ea580c; color: white; border: none;" onclick="completeManagerExtraDuty()">Mark Duty Complete ✅</button>
                 </div>
             </div>
-        `;
-    }
+        ` : ''}
 
-    // Read-Only Manager Checklist Card
-    htmlContent += `
         <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 1px solid #cbd5e1;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="color: #1e3a8a; margin: 0;">📋 Assigned Manager Checklist (READ-ONLY)</h3>
                 <span style="background: #e0f2fe; color: #0369a1; font-size: 0.85rem; font-weight: bold; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;">${assignedChecklistType}</span>
             </div>
             <p style="color: #475569; font-size: 0.9rem; margin-bottom: 15px; font-style: italic;">
-                The assigned checklist from the General Manager appears here.
+                The assigned opening or closing shift checklist from the General Manager appears here for operational execution.
             </p>
         </div>
     `;
-
-    container.innerHTML = htmlContent;
 }
 function submitManagerExtraDutyFromGM() {
     const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
