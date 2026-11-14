@@ -3237,8 +3237,7 @@ function renderMessageBoardTab() {
     const container = document.getElementById('message-board-container') || document.getElementById('message-board');
     if (!container) return;
 
-    // Format current Massachusetts date & time for posting strictly in ET
-    const nowET = new Intl.DateTimeFormat('en-CA', {
+    const todayET = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York',
         year: 'numeric',
         month: '2-digit',
@@ -3255,8 +3254,8 @@ function renderMessageBoardTab() {
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">✍️ Post New Message / Log</h4>
             <div style="margin-bottom: 10px;">
-                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Category:</label>
-                <select id="msg-board-category" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Category Box:</label>
+                <select id="msg-board-category" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; background: white;">
                     <option value="General">📌 General Operational Log</option>
                     <option value="Inventory / 86 List">🍅 Inventory / 86 Items</option>
                     <option value="Staffing / Attendance">👥 Staffing & Attendance</option>
@@ -3265,29 +3264,92 @@ function renderMessageBoardTab() {
             </div>
             <div style="margin-bottom: 10px;">
                 <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Message / Note:</label>
-                <textarea id="msg-board-text" rows="3" placeholder="Type operational log, 86 item, or maintenance note here..." style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;"></textarea>
+                <textarea id="msg-board-text" rows="3" placeholder="Type operational log, 86 item, or maintenance note here..." style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: white;"></textarea>
             </div>
             <button class="btn btn-primary" style="background: #1e3a8a; border: none; padding: 8px 16px;" onclick="postMessageBoardItem()">Post to Message Board 🚀</button>
         </div>
 
         <!-- Message Feed Display -->
         <div class="card">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📜 Active Message Log (${nowET})</h4>
-            <div id="message-board-feed" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 10px;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📜 Active Message Log</h4>
+            <div id="message-board-feed" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 12px;">
                 ${(!Store.messages || Store.messages.length === 0) ? 
                     `<p style="color: #64748b; font-style: italic; text-align: center;">No messages logged yet.</p>` :
-                    Store.messages.slice().reverse().map(msg => `
-                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                                <strong style="color: #1e3a8a; font-size: 0.9rem;">${msg.author || msg.Author || 'Management'} (${msg.category || msg.Category || 'General'})</strong>
-                                <span style="font-size: 0.75rem; color: #64748b;">${msg.date || msg.Date || nowET}</span>
+                    Store.messages.slice().reverse().map(msg => {
+                        const author = msg.author || msg.Author || 'Management';
+                        const category = msg.category || msg.Category || 'General';
+                        const timestamp = msg.date || msg.Date || todayET;
+                        const text = msg.text || msg.Text || msg.message || '';
+
+                        return `
+                            <div style="background: #ffffff; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0; border-left: 4px solid #1e3a8a; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                                    <div>
+                                        <span style="background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 8px;">${category}</span>
+                                        <strong style="color: #0f172a; font-size: 0.9rem;">👤 ${author}</strong>
+                                    </div>
+                                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">⏱️ ${timestamp}</span>
+                                </div>
+                                <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #334155; line-height: 1.4;">${text}</p>
                             </div>
-                            <p style="margin: 0; font-size: 0.9rem; color: #334155;">${msg.text || msg.Text || msg.message || ''}</p>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
             </div>
         </div>
     `;
+}
+function postMessageBoardItem() {
+    const categorySel = document.getElementById('msg-board-category');
+    const textInput = document.getElementById('msg-board-text');
+    
+    if (!categorySel || !textInput) return;
+    
+    const category = categorySel.value.trim();
+    const text = textInput.value.trim();
+    
+    if (!text) {
+        alert("⚠️ Please enter a message or note before posting.");
+        return;
+    }
+
+    const user = Store.user || { name: "General Manager", role: "gm" };
+    const authorName = user.name || user.Name || "General Manager";
+    const timestamp = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    }).format(new Date());
+
+    const newMessage = {
+        id: 'MSG-' + Date.now(),
+        author: authorName,
+        category: category,
+        text: text,
+        date: timestamp
+    };
+
+    if (!Store.messages) Store.messages = [];
+    Store.messages.push(newMessage);
+
+    // Save to backend via ApiService
+    ApiService.request('saveMessage', { message: newMessage }).then(res => {
+        if (res && res.success) {
+            textInput.value = '';
+            renderMessageBoardTab();
+        } else {
+            alert("⚠️ Message saved locally, but cloud sync encountered an issue.");
+            renderMessageBoardTab();
+        }
+    }).catch(err => {
+        console.error("Error saving message:", err);
+        // Fallback local re-render if offline/error
+        textInput.value = '';
+        renderMessageBoardTab();
+    });
 }
 function renderShiftManagerTab() {
     const container = document.getElementById('shift-entry') || document.getElementById('shift-manager-container');
