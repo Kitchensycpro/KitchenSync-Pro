@@ -680,6 +680,73 @@ function assignPrepDuty() {
         KitchenLogger.error("AssignPrep", e);
     }
 }
+function assignManagerExtraDuty() {
+    const empSelect = document.getElementById('mgr-extra-duty-emp');
+    const inputField = document.getElementById('mgr-extra-duty-text');
+    
+    if (!empSelect || !inputField) return;
+
+    const empId = empSelect.value;
+    const dutyText = inputField.value.trim();
+
+    if (!empId || !dutyText) {
+        alert("Please select a manager and enter an extra duty description.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.managerExtraDuty = dutyText;
+    emp.ManagerExtraDuty = dutyText;
+    emp.managerExtraDutyStatus = "Assigned / In Progress";
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Manager Extra Duty assigned successfully to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error assigning manager extra duty:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
+
+function assignManagerChecklistType() {
+    const empSelect = document.getElementById('mgr-checklist-emp');
+    const shiftSelect = document.getElementById('mgr-checklist-type');
+    
+    if (!empSelect || !shiftSelect) return;
+
+    const empId = empSelect.value;
+    const shiftType = shiftSelect.value; // e.g., "Opening Shift" or "Closing Shift"
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.assignedManagerChecklist = shiftType;
+    emp.AssignedManagerChecklist = shiftType;
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Assigned ${shiftType} checklist to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error assigning manager checklist:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
 function renderGMManagerAssignmentWidget(targetId = 'gm-mod-widget-box') {
     const container = document.getElementById(targetId);
     if (!container) return;
@@ -1256,6 +1323,100 @@ function renderManagerChecklist() {
     `;
 }
 
+function renderManagerAssignmentsTab() {
+    const container = document.getElementById('manager-assignments-container') || document.getElementById('checklist-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Find current manager record from Store.employees
+    const mgrId = String(Store.user?.id || Store.user?.ID || Store.user?.employeeId || "").trim();
+    const mgrName = String(Store.user?.name || Store.user?.Name || "").trim().toLowerCase();
+    
+    const currentMgr = Store.employees.find(e => {
+        const eId = String(e.id || e.ID || e.employeeId || "").trim();
+        const eName = String(e.name || e.Name || "").trim().toLowerCase();
+        return (mgrId !== "" && eId === mgrId) || (mgrName !== "" && eName === mgrName);
+    }) || Store.user || {};
+
+    if (currentMgr && Object.keys(currentMgr).length > 0) {
+        Store.user = Object.assign({}, Store.user, currentMgr);
+    }
+
+    // Extract Manager Fields
+    const extraDuty = currentMgr.managerExtraDuty || currentMgr.ManagerExtraDuty || null;
+    const dutyStatus = currentMgr.managerExtraDutyStatus || currentMgr.ManagerExtraDutyStatus || "Pending";
+    const assignedChecklistType = currentMgr.assignedManagerChecklist || currentMgr.AssignedManagerChecklist || "No Checklist Assigned Yet";
+    const assignedStation = currentMgr.station || currentMgr.Station || "General Operations";
+
+    let htmlContent = '';
+
+    // 1. Assigned Special Project / Extra Duty Card (Top)
+    if (extraDuty) {
+        htmlContent += `
+            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Special Project / Extra Duty (READ-ONLY)</h4>
+                    <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${dutyStatus}</span>
+                </div>
+                <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                    ${extraDuty}
+                </p>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; background: #ea580c; color: white; border: none;" onclick="completeManagerExtraDuty()">Mark Duty Complete ✅</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // 2. Assigned Position / Station View[cite: 2]
+    htmlContent += `
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="color: #166534; margin: 0;">📍 Assigned Position / Station: ${assignedStation}</h3>
+                    <p style="color: #15803d; font-size: 0.85rem; margin: 4px 0 0 0;">Active leadership oversight zone</p>
+                </div>
+                <span style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">🔒 Read-Only Station View</span>
+            </div>
+        </div>
+    `;
+
+    // 3. Manager Checklist (Read-Only) - Opening or Closing Shift assigned by GM[cite: 2]
+    htmlContent += `
+        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 1px solid #cbd5e1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #1e3a8a; margin: 0;">📋 Manager Checklist (Read-Only)</h3>
+                <span style="background: #f1f5f9; color: #334155; font-size: 0.85rem; font-weight: bold; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1;">${assignedChecklistType}</span>
+            </div>
+            <p style="color: #475569; font-size: 0.9rem; margin-bottom: 15px; font-style: italic;">
+                The assigned checklist from the General Manager will appear here[cite: 2].
+            </p>
+            <div id="manager-checklist-items-box" style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                <!-- Dynamic Checklist Items based on assignedChecklistType -->
+                <p style="font-size: 0.85rem; color: #64748b;">Review shift execution requirements and compliance standards below.</p>
+            </div>
+        </div>
+    `;
+
+    // 4. Print Button[cite: 2]
+    htmlContent += `
+        <div style="margin-top: 1.5rem; display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Station Checklist</button>
+        </div>
+    `;
+
+    container.innerHTML = htmlContent;
+}
+
+function completeManagerExtraDuty() {
+    Store.user.managerExtraDutyStatus = "Completed ✅";
+    ApiService.request('saveEmployee', { employee: Store.user }).then(() => {
+        alert("✅ Manager Extra Duty marked as complete!");
+        loadGlobalAppData();
+    });
+}
+
 function updateGreetingLabel() {
     const label = document.getElementById('logged-in-user-label');
     if (label && Store.user) {
@@ -1286,7 +1447,7 @@ function buildNavForRole(role) {
         ];
     } else if (role === 'manager') {
         tabs = [
-            { id: 'shift-entry', label: '📋 Shift Manager' },
+            { id: 'shift-entry', label: '📋 Manager Assignments' },
             { id: 'manager-dashboard', label: t('managerDashboard') },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
@@ -1295,7 +1456,7 @@ function buildNavForRole(role) {
     } else if (role === 'gm') {
         tabs = [
             { id: 'gm-dashboard', label: t('gmSuite') },
-            { id: 'shift-entry', label: '📋 Shift Manager' },
+            { id: 'shift-entry', label: '📋 Manager Assignments' },
             { id: 'manager-dashboard', label: t('managerDashboard') },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
@@ -1311,7 +1472,6 @@ function buildNavForRole(role) {
     });
     if (tabs.length > 0) switchTab(tabs[0].id, nav.firstChild);
 }
-
 function switchTab(viewId, btnEl) {
     document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
