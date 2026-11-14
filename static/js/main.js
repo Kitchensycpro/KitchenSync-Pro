@@ -3248,7 +3248,9 @@ function renderMessageBoardTab() {
         { key: "General", label: "📌 General Operational Log", color: "#1e3a8a" },
         { key: "Inventory / 86 List", label: "🍅 Inventory / 86 Items", color: "#166534" },
         { key: "Staffing / Attendance", label: "👥 Staffing & Attendance", color: "#b45309" },
-        { key: "Maintenance", label: "🔧 Equipment Maintenance", color: "#c2410c" }
+        { key: "Maintenance", label: "🔧 Equipment Maintenance", color: "#c2410c" },
+        { key: "Employees", label: "🧑‍🤝‍🧑 Employees & Team", color: "#2563eb" },
+        { key: "Customers", label: "⭐ Customers & Feedback", color: "#9333ea" }
     ];
 
     container.innerHTML = `
@@ -3267,6 +3269,8 @@ function renderMessageBoardTab() {
                     <option value="Inventory / 86 List">🍅 Inventory / 86 Items</option>
                     <option value="Staffing / Attendance">👥 Staffing & Attendance</option>
                     <option value="Maintenance">🔧 Equipment Maintenance</option>
+                    <option value="Employees">🧑‍🤝‍🧑 Employees & Team</option>
+                    <option value="Customers">⭐ Customers & Feedback</option>
                 </select>
             </div>
             <div style="margin-bottom: 10px;">
