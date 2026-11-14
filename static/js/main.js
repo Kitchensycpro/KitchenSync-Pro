@@ -537,6 +537,140 @@ function renderManagerAssignmentWidget(targetId) {
     `;
 }
 
+function renderManagerAssignmentWidget() {
+    const container = document.getElementById('manager-assignment-widget-container');
+    if (!container) return;
+
+    // List of predefined choices for Manager Extra Duties
+    const managerExtraDutyChoices = [
+        "Deep Clean Walk-In Cooler & Freezers",
+        "Weekly Inventory & Food Cost Audit",
+        "HACCP Temperature & Safety Log Review",
+        "Vendor Delivery & Invoice Reconciliation",
+        "Staff Performance & Shift Execution Review",
+        "Equipment Maintenance & Sanitation Audit"
+    ];
+
+    const managers = Store.employees.filter(e => {
+        const role = String(e.role || e.Role || '').trim().toLowerCase();
+        return role === 'manager' || role === 'gm';
+    });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                
+                <!-- Extra Duty Assignment Box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Duty Task:</label>
+                        <select id="gm-sel-mgr-duty-choice" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Select Extra Duty Task --</option>
+                            ${managerExtraDutyChoices.map(duty => `<option value="${duty}">${duty}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
+                </div>
+
+                <!-- Manager Checklist Assignment Box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-chk-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Shift Type:</label>
+                        <select id="gm-sel-mgr-chk-type" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="Opening Shift">Opening Shift Checklist</option>
+                            <option value="Closing Shift">Closing Shift Checklist</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="submitManagerChecklistFromGM()">Assign Checklist 📋</button>
+                </div>
+
+            </div>
+        </div>
+    `;
+}
+
+function submitManagerExtraDutyFromGM() {
+    const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
+    const dutyText = document.getElementById('gm-sel-mgr-duty-choice').value;
+
+    if (!empId || !dutyText) {
+        alert("Please select both a manager and an extra duty task.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.managerExtraDuty = dutyText;
+    emp.ManagerExtraDuty = dutyText;
+    emp.managerExtraDutyStatus = "Assigned / In Progress";
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Extra duty assigned successfully to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error saving manager extra duty:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
+
+function submitManagerChecklistFromGM() {
+    const empId = document.getElementById('gm-sel-mgr-chk-emp').value;
+    const shiftType = document.getElementById('gm-sel-mgr-chk-type').value;
+
+    if (!empId || !shiftType) {
+        alert("Please select a manager and a shift type.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.assignedManagerChecklist = shiftType;
+    emp.AssignedManagerChecklist = shiftType;
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Assigned ${shiftType} to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error saving manager checklist:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
+
 function assignCookShift(targetId = 'mgr-cook-widget-box') {
     const empSelect = document.getElementById(`sel-cook-employee-${targetId}`);
     const stationSelect = document.getElementById(`sel-cook-station-${targetId}`);
@@ -2694,6 +2828,16 @@ function renderGMDashboard() {
     });
     if (cooksList.length === 0) cooksList = Store.employees;
 
+    // List of predefined choices for Manager Extra Duties
+    const managerExtraDutyChoices = [
+        "Deep Clean Walk-In Cooler & Freezers",
+        "Weekly Inventory & Food Cost Audit",
+        "HACCP Temperature & Safety Log Review",
+        "Vendor Delivery & Invoice Reconciliation",
+        "Staff Performance & Shift Execution Review",
+        "Equipment Maintenance & Sanitation Audit"
+    ];
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
@@ -2702,6 +2846,17 @@ function renderGMDashboard() {
             </div>
             <div>
                 <button class="btn btn-secondary" style="color: #dc2626; border: 1px solid #dc2626;" onclick="executeMasterReset()">⚠️ Master Reset All Data</button>
+            </div>
+        </div>
+
+        <!-- 1. 14-Day Compliance Tracking Trend (Moved to Top) -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
+            <div style="display: flex; gap: 6px; align-items: flex-end; height: 180px; padding: 20px 10px 10px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; margin-top: 1rem;">
+                ${Object.entries(dailyCompliance).map(([date, stats]) => {
+                    const avg = stats.total > 0 ? Math.round(stats.sum / stats.total) : 0;
+                    return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 35px; height: 100%; justify-content: flex-end;"><span style="font-size: 0.7rem; font-weight: bold; color: #1e3a8a; margin-bottom: 4px;">${avg}%</span><div style="width: 100%; background: #2563eb; border-radius: 4px 4px 0 0; height: Math.max(avg,5)%;"></div><span style="font-size:0.65rem;color:#64748b;margin-top:6px;transform:rotate(-35deg);">${date.slice(5)}</span></div>`;
+                }).join('')}
             </div>
         </div>
 
@@ -2776,13 +2931,53 @@ function renderGMDashboard() {
             <button class="btn btn-primary" style="background-color: #166534; border-color: #166534;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
         </div>
 
-        <div class="card" style="margin-bottom: 1.5rem;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
-            <div style="display: flex; gap: 6px; align-items: flex-end; height: 180px; padding: 20px 10px 10px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; margin-top: 1rem;">
-                ${Object.entries(dailyCompliance).map(([date, stats]) => {
-                    const avg = stats.total > 0 ? Math.round(stats.sum / stats.total) : 0;
-                    return `<div style="flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 35px; height: 100%; justify-content: flex-end;"><span style="font-size: 0.7rem; font-weight: bold; color: #1e3a8a; margin-bottom: 4px;">${avg}%</span><div style="width: 100%; background: #2563eb; border-radius: 4px 4px 0 0; height: Math.max(avg,5)%;"></div><span style="font-size:0.65rem;color:#64748b;margin-top:6px;transform:rotate(-35deg);">${date.slice(5)}</span></div>`;
-                }).join('')}
+        <!-- MANAGER ASSIGNMENTS & EXTRA DUTIES WIDGET (NEW) -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                
+                <!-- Extra Duty Assignment Box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Duty Task:</label>
+                        <select id="gm-sel-mgr-duty-choice" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Select Extra Duty Task --</option>
+                            ${managerExtraDutyChoices.map(duty => `<option value="${duty}">${duty}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
+                </div>
+
+                <!-- Manager Checklist Assignment Box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-chk-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Shift Type:</label>
+                        <select id="gm-sel-mgr-chk-type" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="Opening Shift">Opening Shift Checklist</option>
+                            <option value="Closing Shift">Closing Shift Checklist</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="submitManagerChecklistFromGM()">Assign Checklist 📋</button>
+                </div>
+
             </div>
         </div>
 
@@ -2927,6 +3122,69 @@ function renderGMDashboard() {
                 </tbody>
             </table>
         </div>`;
+}
+
+function submitManagerExtraDutyFromGM() {
+    const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
+    const dutyText = document.getElementById('gm-sel-mgr-duty-choice').value;
+
+    if (!empId || !dutyText) {
+        alert("Please select both a manager and an extra duty task.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.managerExtraDuty = dutyText;
+    emp.ManagerExtraDuty = dutyText;
+    emp.managerExtraDutyStatus = "Assigned / In Progress";
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Extra duty assigned successfully to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error saving manager extra duty:", err);
+        alert("❌ Network error connecting to backend.");
+    });
+}
+
+function submitManagerChecklistFromGM() {
+    const empId = document.getElementById('gm-sel-mgr-chk-emp').value;
+    const shiftType = document.getElementById('gm-sel-mgr-chk-type').value;
+
+    if (!empId || !shiftType) {
+        alert("Please select a manager and a shift type.");
+        return;
+    }
+
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Manager record not found.");
+        return;
+    }
+
+    emp.assignedManagerChecklist = shiftType;
+    emp.AssignedManagerChecklist = shiftType;
+
+    ApiService.request('saveEmployee', { employee: emp }).then(res => {
+        if (res && res.success) {
+            alert(`✅ Assigned ${shiftType} to ${emp.name || emp.Name}!`);
+            loadGlobalAppData();
+        } else {
+            alert("⚠️ Saved locally, but cloud sync encountered an issue.");
+        }
+    }).catch(err => {
+        console.error("Error saving manager checklist:", err);
+        alert("❌ Network error connecting to backend.");
+    });
 }
 function openShiftChecklistModal(shiftId) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
