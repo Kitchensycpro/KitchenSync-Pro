@@ -1627,8 +1627,22 @@ function switchTab(viewId, btnEl) {
     document.getElementById(`view-${viewId}`)?.classList.add('active');
     btnEl?.classList.add('active');
 
-    // Trigger specific rendering functions based on active view/tab selection
-    if (viewId === 'message-board') {
+    const userRole = String(Store.user?.role || Store.user?.Role || '').toLowerCase();
+
+    // Route rendering based on view and verified role
+    if (viewId === 'shift-entry') {
+        if (userRole === 'manager' || userRole === 'gm') {
+            // If a manager clicks their assignment tab, render manager assignments
+            if (typeof renderManagerAssignmentsTab === 'function') {
+                renderManagerAssignmentsTab();
+            }
+        } else {
+            // Standard cook checklist render
+            if (typeof renderCookChecklist === 'function') {
+                renderCookChecklist();
+            }
+        }
+    } else if (viewId === 'message-board') {
         if (typeof renderMessageBoardTab === 'function') {
             renderMessageBoardTab();
         }
@@ -1636,19 +1650,12 @@ function switchTab(viewId, btnEl) {
         if (typeof renderGMDashboard === 'function') {
             renderGMDashboard();
         }
-    } else if (viewId === 'shift-entry') {
-        if (Store.user && String(Store.user.role || '').toLowerCase() === 'manager') {
-            if (typeof renderManagerAssignmentsTab === 'function') {
-                renderManagerAssignmentsTab();
-            }
-        }
     }
 
     if (typeof UIController !== 'undefined' && typeof UIController.refreshActiveView === 'function') {
         UIController.refreshActiveView();
     }
 }
-
 function renderChecklists() {
     if (Store.role === 'manager' || Store.role === 'gm') { renderManagerChecklist(); return; }
     renderCookChecklistGated();
@@ -3507,8 +3514,15 @@ function renderShiftManagerTab() {
     `;
 }
 function renderManagerAssignmentsTab() {
-    const container = document.getElementById('shift-entry') || document.getElementById('manager-assignments-container') || document.getElementById('checklist-container');
+    const container = document.getElementById('manager-assignments-container') || document.getElementById('shift-entry');
     if (!container) return;
+
+    // Strict Role Guard: Ensure cooks never render or view manager assignments
+    const userRole = String(Store.user?.role || Store.user?.Role || '').toLowerCase();
+    if (userRole === 'cook') {
+        container.innerHTML = '';
+        return;
+    }
 
     const mgrId = String(Store.user?.id || Store.user?.ID || "").trim();
     const currentMgr = Store.employees.find(e => String(e.id || e.ID).trim() === mgrId) || Store.user || {};
