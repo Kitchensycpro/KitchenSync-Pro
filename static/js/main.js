@@ -1637,7 +1637,6 @@ function switchTab(viewId, btnEl) {
             renderGMDashboard();
         }
     } else if (viewId === 'shift-entry') {
-        // Renders either Shift Manager tab or Manager Assignments depending on user role
         if (Store.user && String(Store.user.role || '').toLowerCase() === 'manager') {
             if (typeof renderManagerAssignmentsTab === 'function') {
                 renderManagerAssignmentsTab();
@@ -3238,8 +3237,13 @@ function renderMessageBoardTab() {
     const container = document.getElementById('message-board-container') || document.getElementById('message-board');
     if (!container) return;
 
-    // Format current Massachusetts date & time for posting
-    const nowET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    // Format current Massachusetts date & time for posting strictly in ET
+    const nowET = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
