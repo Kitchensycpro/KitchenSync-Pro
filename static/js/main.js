@@ -3142,7 +3142,7 @@ function renderShiftManagerTab() {
     const lookupDate = Store.selectedShiftDate || (() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }();
+    })();
 
     const filteredCookShifts = Store.shifts.filter(s => {
         const rawDate = String(s.date || s.Date || s.DATE || "").trim();
