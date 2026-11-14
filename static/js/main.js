@@ -1588,9 +1588,10 @@ function buildNavForRole(role) {
             { id: 'roster', label: t('staffRoster') }
         ];
     } else if (role === 'gm') {
-        // GM tab array excludes Manager Assignments as requested
+        // Second tab renamed to Management Message Board with only message-board functionality
         tabs = [
             { id: 'gm-dashboard', label: t('gmSuite') },
+            { id: 'message-board', label: '💬 Management Message Board' },
             { id: 'manager-dashboard', label: t('managerDashboard') },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
@@ -2815,7 +2816,6 @@ function renderGMDashboard() {
     const filteredCookShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER');
     const filteredManagerShifts = filteredShifts.filter(s => String(s.role || s.ROLE || "").toUpperCase() === 'MANAGER');
 
-    // Get managers and cooks inline for dropdowns
     let managers = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return r.includes('manager') || r.includes('gm') || r.includes('supervisor');
@@ -2828,7 +2828,6 @@ function renderGMDashboard() {
     });
     if (cooksList.length === 0) cooksList = Store.employees;
 
-    // List of predefined choices for Manager Extra Duties
     const managerExtraDutyChoices = [
         "Deep Clean Walk-In Cooler & Freezers",
         "Weekly Inventory & Food Cost Audit",
@@ -2849,7 +2848,7 @@ function renderGMDashboard() {
             </div>
         </div>
 
-        <!-- 1. 14-Day Compliance Tracking Trend -->
+        <!-- 14-Day Compliance Tracking Trend -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
             <div style="display: flex; gap: 6px; align-items: flex-end; height: 180px; padding: 20px 10px 10px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; margin-top: 1rem;">
@@ -2867,11 +2866,11 @@ function renderGMDashboard() {
         </div>
 
         <!-- ========================================== -->
-        <!-- 2. UNIFIED COOK ASSIGNMENTS BOX            -->
+        <!-- UNIFIED COOK ASSIGNMENTS BOX (WITH SPECIAL PROJECT) -->
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
-            <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments & Prep Delegations</h4>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Manage station shifts, window prep tasks, and special project delegations for kitchen staff.</p>
+            <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments, Prep & Special Projects</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Manage station shifts, window prep tasks, and special project/extra duty delegations for kitchen staff.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 1rem;">
                 
@@ -2896,24 +2895,21 @@ function renderGMDashboard() {
                     <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Station 📌</button>
                 </div>
 
-                <!-- Prep Duty Window Sub-box -->
+                <!-- Special Project / Extra Duty Assignment Sub-box -->
                 <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;">
-                    <h5 style="color: #166534; margin-top: 0;">⏱️ Assign Prep Window & Tasks</h5>
+                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h5>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
-                        <select id="prep-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                        <select id="gm-sel-cook-proj-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
                             <option value="">-- Choose Cook --</option>
                             ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
                         </select>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Time Window:</label>
-                        <select id="prep-duty-window" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift</option>
-                            <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift</option>
-                            <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift</option>
-                        </select>
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Project Description:</label>
+                        <input type="text" id="gm-sel-cook-proj-text" placeholder="e.g., Deep clean fry station line" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;" />
                     </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitCookSpecialProjectFromGM()">Assign Project 🚀</button>
                 </div>
 
             </div>
@@ -2935,7 +2931,7 @@ function renderGMDashboard() {
         </div>
 
         <!-- ========================================== -->
-        <!-- 3. COOK SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
+        <!-- COOK SHIFT AUDITS TABLE (DIRECTLY BELOW)   -->
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
@@ -3006,7 +3002,7 @@ function renderGMDashboard() {
         </div>
 
         <!-- ========================================== -->
-        <!-- 4. UNIFIED MANAGER ASSIGNMENTS BOX         -->
+        <!-- MANAGER ASSIGNMENTS & EXTRA DUTIES WIDGET  -->
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
@@ -3058,7 +3054,7 @@ function renderGMDashboard() {
         </div>
 
         <!-- ========================================== -->
-        <!-- 5. MANAGER SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
+        <!-- MANAGER SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Shift Audits (MOD Oversight)</h4>
