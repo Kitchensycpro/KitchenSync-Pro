@@ -3244,6 +3244,13 @@ function renderMessageBoardTab() {
         day: '2-digit'
     }).format(new Date());
 
+    const categories = [
+        { key: "General", label: "📌 General Operational Log", color: "#1e3a8a" },
+        { key: "Inventory / 86 List", label: "🍅 Inventory / 86 Items", color: "#166534" },
+        { key: "Staffing / Attendance", label: "👥 Staffing & Attendance", color: "#b45309" },
+        { key: "Maintenance", label: "🔧 Equipment Maintenance", color: "#c2410c" }
+    ];
+
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">💬 Management Message Board</h3>
@@ -3269,32 +3276,37 @@ function renderMessageBoardTab() {
             <button class="btn btn-primary" style="background: #1e3a8a; border: none; padding: 8px 16px;" onclick="postMessageBoardItem()">Post to Message Board 🚀</button>
         </div>
 
-        <!-- Message Feed Display -->
-        <div class="card">
-            <h4 style="color: #1e3a8a; margin-top: 0;">📜 Active Message Log</h4>
-            <div id="message-board-feed" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 12px;">
-                ${(!Store.messages || Store.messages.length === 0) ? 
-                    `<p style="color: #64748b; font-style: italic; text-align: center;">No messages logged yet.</p>` :
-                    Store.messages.slice().reverse().map(msg => {
-                        const author = msg.author || msg.Author || 'Management';
-                        const category = msg.category || msg.Category || 'General';
-                        const timestamp = msg.date || msg.Date || todayET;
-                        const text = msg.text || msg.Text || msg.message || '';
+        <!-- Horizontal Enclosed Category Boards Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; align-items: start;">
+            ${categories.map(cat => {
+                const catMessages = (Store.messages || []).filter(m => (m.category || m.Category || 'General') === cat.key);
+                
+                return `
+                    <div class="card" style="background: #ffffff; border-top: 4px solid ${cat.color}; padding: 12px; margin-bottom: 0; height: 100%; display: flex; flex-direction: column;">
+                        <h4 style="color: ${cat.color}; margin-top: 0; margin-bottom: 10px; font-size: 0.95rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">${cat.label}</h4>
+                        <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1; max-height: 350px; overflow-y: auto;">
+                            ${catMessages.length === 0 ? 
+                                `<p style="color: #94a3b8; font-size: 0.8rem; font-style: italic; text-align: center; margin: 20px 0;">No logs in this category.</p>` :
+                                catMessages.slice().reverse().map(msg => {
+                                    const author = msg.author || msg.Author || 'Management';
+                                    const timestamp = msg.date || msg.Date || todayET;
+                                    const text = msg.text || msg.Text || msg.message || '';
 
-                        return `
-                            <div style="background: #ffffff; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0; border-left: 4px solid #1e3a8a; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
-                                    <div>
-                                        <span style="background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 8px;">${category}</span>
-                                        <strong style="color: #0f172a; font-size: 0.9rem;">👤 ${author}</strong>
-                                    </div>
-                                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">⏱️ ${timestamp}</span>
-                                </div>
-                                <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #334155; line-height: 1.4;">${text}</p>
-                            </div>
-                        `;
-                    }).join('')}
-            </div>
+                                    return `
+                                        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                                <strong style="color: #0f172a; font-size: 0.8rem;">👤 ${author}</strong>
+                                                <span style="font-size: 0.7rem; color: #64748b;">${timestamp}</span>
+                                            </div>
+                                            <p style="margin: 0; font-size: 0.85rem; color: #334155; line-height: 1.3;">${text}</p>
+                                        </div>
+                                    `;
+                                }).join('')
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('')}
         </div>
     `;
 }
@@ -3335,21 +3347,19 @@ function postMessageBoardItem() {
     if (!Store.messages) Store.messages = [];
     Store.messages.push(newMessage);
 
-    // Save to backend via ApiService
-    ApiService.request('saveMessage', { message: newMessage }).then(res => {
-        if (res && res.success) {
+    if (typeof ApiService !== 'undefined' && ApiService.request) {
+        ApiService.request('saveMessage', { message: newMessage }).then(res => {
             textInput.value = '';
             renderMessageBoardTab();
-        } else {
-            alert("⚠️ Message saved locally, but cloud sync encountered an issue.");
+        }).catch(err => {
+            console.error("Error saving message:", err);
+            textInput.value = '';
             renderMessageBoardTab();
-        }
-    }).catch(err => {
-        console.error("Error saving message:", err);
-        // Fallback local re-render if offline/error
+        });
+    } else {
         textInput.value = '';
         renderMessageBoardTab();
-    });
+    }
 }
 function renderShiftManagerTab() {
     const container = document.getElementById('shift-entry') || document.getElementById('shift-manager-container');
