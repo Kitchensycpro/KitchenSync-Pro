@@ -1588,9 +1588,9 @@ function buildNavForRole(role) {
             { id: 'roster', label: t('staffRoster') }
         ];
     } else if (role === 'gm') {
+        // GM tab array excludes Manager Assignments as requested
         tabs = [
             { id: 'gm-dashboard', label: t('gmSuite') },
-            { id: 'shift-entry', label: '📋 Manager Assignments' },
             { id: 'manager-dashboard', label: t('managerDashboard') },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
@@ -2849,7 +2849,7 @@ function renderGMDashboard() {
             </div>
         </div>
 
-        <!-- 1. 14-Day Compliance Tracking Trend (Moved to Top) -->
+        <!-- 1. 14-Day Compliance Tracking Trend -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📊 14-Day Compliance Tracking Trend</h4>
             <div style="display: flex; gap: 6px; align-items: flex-end; height: 180px; padding: 20px 10px 10px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; overflow-x: auto; margin-top: 1rem;">
@@ -2866,61 +2866,64 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- MANAGER ON DUTY (MOD) ASSIGNMENT WIDGET -->
-        <div class="card" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">👔 Assign Manager on Duty (MOD) Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Select a manager and assign an Opening or Closing Manager checklist for executive GM audit.</p>
+        <!-- ========================================== -->
+        <!-- 2. UNIFIED COOK ASSIGNMENTS BOX            -->
+        <!-- ========================================== -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+            <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments & Prep Delegations</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Manage station shifts, window prep tasks, and special project delegations for kitchen staff.</p>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Select Manager:</label>
-                    <select id="sel-mod-employee" class="form-control" style="margin-top: 5px;">
-                        <option value="">-- Choose Manager --</option>
-                        ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role || 'Manager'})</option>`).join('')}
-                    </select>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 1rem;">
+                
+                <!-- Station Assignment Sub-box -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                    <h5 style="color: #166534; margin-top: 0;">📍 Assign Station Checklist</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
+                        <select id="sel-cook-employee-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Cook --</option>
+                            ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Station:</label>
+                        <select id="sel-cook-station-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="range_open">Range Open</option>
+                            <option value="mid_open">Mid Open</option>
+                            <option value="grill_fry_open">Grill/Fry Open</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Station 📌</button>
                 </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Checklist Type & Shift:</label>
-                    <select id="sel-mod-type" class="form-control" style="margin-top: 5px;">
-                        <option value="opening_manager">☀️ Opening Manager Checklist</option>
-                        <option value="closing_manager">🌙 Closing Manager Checklist</option>
-                    </select>
-                </div>
-                <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignManagerShift()">Assign MOD Checklist 🚀</button>
-                </div>
-            </div>
-        </div>
 
-        <!-- PREP DUTY ASSIGNMENT WIDGET IN GM SUITE -->
-        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
-            <h4 style="color: #166534; margin-top: 0;">⏱️ Assign Pre-Shift / Mid-Shift / Post-Shift Prep</h4>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Utilize dead-time hours to delegate crucial kitchen prep tasks based on predicted volume.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 1rem;">
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Select Cook:</label>
-                    <select id="prep-duty-emp" class="form-control" style="width: 100%; margin-top: 4px;">
-                        <option value="">-- Select Cook --</option>
-                        ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
-                    </select>
+                <!-- Prep Duty Window Sub-box -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                    <h5 style="color: #166534; margin-top: 0;">⏱️ Assign Prep Window & Tasks</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
+                        <select id="prep-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Cook --</option>
+                            ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Time Window:</label>
+                        <select id="prep-duty-window" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift</option>
+                            <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift</option>
+                            <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Shift Time Window:</label>
-                    <select id="prep-duty-window" class="form-control" style="width: 100%; margin-top: 4px;">
-                        <option value="">-- Select Window --</option>
-                        <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift (6:30 a.m. - 7:45 a.m.)</option>
-                        <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift (3:00 p.m. - 4:00 p.m.)</option>
-                        <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift (6:45 p.m. - 7:45 p.m.)</option>
-                    </select>
-                </div>
+
             </div>
 
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Assign:</label>
-                <div style="max-height: 160px; overflow-y: auto; background: white; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
+            <!-- Prep Task Checkboxes Section -->
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Delegate:</label>
+                <div style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px;">
                     ${PREP_DUTY_TASKS.map(task => `
-                        <label style="font-size: 0.85rem; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #1e293b;">
+                        <label style="font-size: 0.8rem; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: #1e293b;">
                             <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
                             <span>${task}</span>
                         </label>
@@ -2928,60 +2931,12 @@ function renderGMDashboard() {
                 </div>
             </div>
 
-            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
+            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534; width: 100%;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
         </div>
 
-        <!-- MANAGER ASSIGNMENTS & EXTRA DUTIES WIDGET (NEW) -->
-        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
-                
-                <!-- Extra Duty Assignment Box -->
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
-                        <select id="gm-sel-mgr-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Choose Manager --</option>
-                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
-                        </select>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Duty Task:</label>
-                        <select id="gm-sel-mgr-duty-choice" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Select Extra Duty Task --</option>
-                            ${managerExtraDutyChoices.map(duty => `<option value="${duty}">${duty}</option>`).join('')}
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
-                </div>
-
-                <!-- Manager Checklist Assignment Box -->
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
-                        <select id="gm-sel-mgr-chk-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Choose Manager --</option>
-                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
-                        </select>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Shift Type:</label>
-                        <select id="gm-sel-mgr-chk-type" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="Opening Shift">Opening Shift Checklist</option>
-                            <option value="Closing Shift">Closing Shift Checklist</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="submitManagerChecklistFromGM()">Assign Checklist 📋</button>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- TEAM COOK SHIFT AUDITS TABLE -->
+        <!-- ========================================== -->
+        <!-- 3. COOK SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
+        <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
@@ -3050,7 +3005,61 @@ function renderGMDashboard() {
             </table>
         </div>
 
-        <!-- MANAGER SHIFT AUDITS SECTION (GM DASHBOARD ONLY) -->
+        <!-- ========================================== -->
+        <!-- 4. UNIFIED MANAGER ASSIGNMENTS BOX         -->
+        <!-- ========================================== -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
+            <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
+            <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                
+                <!-- Extra Duty Assignment Sub-box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Duty Task:</label>
+                        <select id="gm-sel-mgr-duty-choice" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Select Extra Duty Task --</option>
+                            ${managerExtraDutyChoices.map(duty => `<option value="${duty}">${duty}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
+                </div>
+
+                <!-- Manager Checklist Assignment Sub-box -->
+                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
+                        <select id="gm-sel-mgr-chk-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Manager --</option>
+                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Shift Type:</label>
+                        <select id="gm-sel-mgr-chk-type" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="Opening Shift">☀️ Opening Shift Checklist</option>
+                            <option value="Closing Shift">🌙 Closing Shift Checklist</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="submitManagerChecklistFromGM()">Assign Checklist 📋</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 5. MANAGER SHIFT AUDITS TABLE (DIRECTLY BELOW) -->
+        <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #1e3a8a;">
             <h4 style="color: #1e3a8a; margin-top: 0;">📋 Manager Shift Audits (MOD Oversight)</h4>
             <p style="font-size: 0.85rem; color: #64748b;">Review, score, and audit Manager on Duty (MOD) opening and closing checklists.</p>
@@ -3123,7 +3132,6 @@ function renderGMDashboard() {
             </table>
         </div>`;
 }
-
 function submitManagerExtraDutyFromGM() {
     const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
     const dutyText = document.getElementById('gm-sel-mgr-duty-choice').value;
