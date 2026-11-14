@@ -3132,6 +3132,201 @@ function renderGMDashboard() {
             </table>
         </div>`;
 }
+function renderShiftManagerTab() {
+    const container = document.getElementById('shift-entry') || document.getElementById('shift-manager-container');
+    if (!container) return;
+
+    // Get active cooks list
+    let cooksList = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
+    });
+    if (cooksList.length === 0) cooksList = Store.employees;
+
+    const lookupDate = Store.selectedShiftDate || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }();
+
+    const filteredCookShifts = Store.shifts.filter(s => {
+        const rawDate = String(s.date || s.Date || s.DATE || "").trim();
+        const isCook = String(s.role || s.ROLE || "").toUpperCase() !== 'MANAGER';
+        if (!rawDate) return isCook;
+        return rawDate.substring(0, 10) === lookupDate && isCook;
+    });
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">📋 Shift Manager Dashboard</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Delegate station checklists, prep windows, and special projects to team cooks.</p>
+        </div>
+
+        <!-- UNIFIED COOK ASSIGNMENTS BOX -->
+        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
+            <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments, Prep & Special Projects</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 1rem; margin-top: 1rem;">
+                
+                <!-- Station Assignment Sub-box -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                    <h5 style="color: #166534; margin-top: 0;">📍 Assign Station Checklist</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
+                        <select id="sel-cook-employee-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Cook --</option>
+                            ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Station:</label>
+                        <select id="sel-cook-station-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="range_open">Range Open</option>
+                            <option value="mid_open">Mid Open</option>
+                            <option value="grill_fry_open">Grill/Fry Open</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Station 📌</button>
+                </div>
+
+                <!-- Special Project Assignment Sub-box -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0;">
+                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h5>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
+                        <select id="gm-sel-cook-proj-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Choose Cook --</option>
+                            ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Project Description:</label>
+                        <input type="text" id="gm-sel-cook-proj-text" placeholder="e.g., Deep clean fry station line" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;" />
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitCookSpecialProjectFromGM()">Assign Project 🚀</button>
+                </div>
+
+            </div>
+
+            <!-- Prep Task Checkboxes Section -->
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Delegate:</label>
+                <div style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px;">
+                    ${typeof PREP_DUTY_TASKS !== 'undefined' ? PREP_DUTY_TASKS.map(task => `
+                        <label style="font-size: 0.8rem; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: #1e293b;">
+                            <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
+                            <span>${task}</span>
+                        </label>
+                    `).join('') : ''}
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534; width: 100%;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
+        </div>
+
+        <!-- COOK SHIFT AUDITS TABLE (Directly below assignment box) -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
+                    <input type="date" id="mgr-calendar-lookup-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                </div>
+            </div>
+            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Employee</th>
+                        <th>Role</th>
+                        <th>Station</th>
+                        <th>Score</th>
+                        <th>Status (Tier)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filteredCookShifts.length === 0 ? `<tr><td colspan="7" style="text-align: center; color: #64748b;">No completed cook shift records found for ${lookupDate}.</td></tr>` : filteredCookShifts.map(s => {
+                        const sDate = s.date || s.Date || '';
+                        const sName = s.empName || s.EmpName || 'Staff';
+                        const sRole = String(s.role || s.Role || '').toUpperCase();
+                        const sStation = s.station || s.Station || 'General';
+                        const score = Number(s.scorePct || s.ScorePct || 0);
+                        const isSignedOff = s.managerSignOff === true || String(s.managerSignOff).toLowerCase() === 'true';
+                        const sId = s.id || s.ID || '';
+
+                        return `
+                            <tr onclick="openShiftChecklistModal('${sId}')" style="cursor: pointer;">
+                                <td>${sDate}</td>
+                                <td><strong>${sName}</strong></td>
+                                <td>${sRole}</td>
+                                <td>${sStation}</td>
+                                <td><strong>${score}%</strong></td>
+                                <td><span style="font-weight: bold; color: #1e3a8a;">${s.status || 'Pending'}</span></td>
+                                <td onclick="event.stopPropagation()">
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+function renderManagerAssignmentsTab() {
+    const container = document.getElementById('manager-assignments-container') || document.getElementById('checklist-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Find current manager profile
+    const mgrId = String(Store.user?.id || Store.user?.ID || "").trim();
+    const currentMgr = Store.employees.find(e => String(e.id || e.ID).trim() === mgrId) || Store.user || {};
+
+    const extraDuty = currentMgr.managerExtraDuty || currentMgr.ManagerExtraDuty || null;
+    const dutyStatus = currentMgr.managerExtraDutyStatus || currentMgr.ManagerExtraDutyStatus || "Pending";
+    const assignedChecklistType = currentMgr.assignedManagerChecklist || currentMgr.AssignedManagerChecklist || "No Checklist Assigned Yet";
+
+    let htmlContent = `
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Personal Checklist</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Read-only operational duties and shift assignments delegated by the General Manager.</p>
+        </div>
+    `;
+
+    // Read-Only Extra Duty Card
+    if (extraDuty) {
+        htmlContent += `
+            <div class="card" style="margin-bottom: 1.5rem; background: #fdf8f6; border: 2px solid #c2410c;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h4 style="color: #c2410c; margin: 0;">🛠️ Assigned Manager Extra Duty (READ-ONLY)</h4>
+                    <span style="background: #ffedd5; color: #c2410c; font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 12px; border: 1px solid #fed7aa;">Status: ${dutyStatus}</span>
+                </div>
+                <p style="font-size: 0.9rem; color: #1e293b; background: white; padding: 10px 12px; border-radius: 4px; border: 1px solid #fed7aa; margin: 0; font-weight: 500;">
+                    ${extraDuty}
+                </p>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.80rem; background: #ea580c; color: white; border: none;" onclick="completeManagerExtraDuty()">Mark Duty Complete ✅</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Read-Only Manager Checklist Card
+    htmlContent += `
+        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 1px solid #cbd5e1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: #1e3a8a; margin: 0;">📋 Assigned Manager Checklist (READ-ONLY)</h3>
+                <span style="background: #e0f2fe; color: #0369a1; font-size: 0.85rem; font-weight: bold; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;">${assignedChecklistType}</span>
+            </div>
+            <p style="color: #475569; font-size: 0.9rem; margin-bottom: 15px; font-style: italic;">
+                The assigned checklist from the General Manager appears here.
+            </p>
+        </div>
+    `;
+
+    container.innerHTML = htmlContent;
+}
 function submitManagerExtraDutyFromGM() {
     const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
     const dutyText = document.getElementById('gm-sel-mgr-duty-choice').value;
