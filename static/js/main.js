@@ -1586,6 +1586,7 @@ function buildNavForRole(role) {
     if (!nav) return;
     nav.innerHTML = '';
     let tabs = [];
+
     if (role === 'cook') {
         tabs = [
             { id: 'shift-entry', label: t('myChecklist') },
@@ -1595,22 +1596,25 @@ function buildNavForRole(role) {
         ];
     } else if (role === 'manager') {
         tabs = [
-            { id: 'shift-entry', label: '📋 Manager Assignments' },
             { id: 'manager-dashboard', label: t('managerDashboard') },
+            { id: 'message-board', label: '💬 Management Message Board' },
+            { id: 'shift-entry', label: '📋 Shift Manager' },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
             { id: 'roster', label: t('staffRoster') }
         ];
     } else if (role === 'gm') {
-        // Shift Manager tab removed entirely; Message Board tab houses the full widget
         tabs = [
             { id: 'gm-dashboard', label: t('gmSuite') },
             { id: 'message-board', label: '💬 Management Message Board' },
+            { id: 'manager-dashboard', label: t('managerDashboard') },
+            { id: 'shift-entry', label: '📋 Shift Manager' },
             { id: 'cook-training', label: t('trainingModules') },
             { id: 'recipe-book', label: t('recipeBook') },
             { id: 'roster', label: t('staffRoster') }
         ];
     }
+
     tabs.forEach((tab, idx) => {
         const btn = document.createElement('button');
         btn.className = `tab-btn ${idx === 0 ? 'active' : ''}`;
@@ -1618,6 +1622,7 @@ function buildNavForRole(role) {
         btn.onclick = () => switchTab(tab.id, btn);
         nav.appendChild(btn);
     });
+
     if (tabs.length > 0) switchTab(tabs[0].id, nav.firstChild);
 }
 function switchTab(viewId, btnEl) {
