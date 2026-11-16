@@ -3304,17 +3304,17 @@ function renderMessageBoardTab() {
                             ${catMessages.length === 0 ? 
                                 `<p style="color: #94a3b8; font-size: 0.8rem; font-style: italic; text-align: center; margin: 20px 0;">No logs in this category.</p>` :
                                 catMessages.slice().reverse().map(msg => {
-                                    const author = msg.author || msg.Author || 'Management';
-                                    const timestamp = msg.date || msg.Date || todayET;
-                                    const text = msg.text || msg.Text || msg.message || '';
+                                    const author = msg.authorName || msg.AuthorName || msg.author || msg.Author || 'Management';
+                                    const timestamp = msg.timestamp || msg.Timestamp || msg.date || msg.Date || todayET;
+                                    const text = msg.messageText || msg.MessageText || msg.text || msg.Text || msg.message || '';
 
                                     return `
-                                        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 8px;">
                                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                                                 <strong style="color: #0f172a; font-size: 0.8rem;">👤 ${author}</strong>
                                                 <span style="font-size: 0.7rem; color: #64748b;">${timestamp}</span>
                                             </div>
-                                            <p style="margin: 0; font-size: 0.85rem; color: #334155; line-height: 1.3;">${text}</p>
+                                            <p style="margin: 0; font-size: 0.85rem; color: #334155; line-height: 1.3; word-break: break-word;">${text}</p>
                                         </div>
                                     `;
                                 }).join('')
@@ -3340,8 +3340,8 @@ function postMessageBoardItem() {
         return;
     }
 
-    const user = Store.user || { name: "General Manager", role: "gm" };
-    const authorName = user.name || user.Name || "General Manager";
+    const user = Store.user || { name: "Management", role: "manager" };
+    const authorName = user.name || user.Name || "Management";
     const timestamp = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/New_York',
         year: 'numeric',
@@ -3352,12 +3352,13 @@ function postMessageBoardItem() {
         hour12: true
     }).format(new Date());
 
+    // Exact property keys mapped to your Google Sheet headers: id, category, authorName, timestamp, messageText
     const newMessage = {
         id: 'MSG-' + Date.now(),
-        author: authorName,
         category: category,
-        text: text,
-        date: timestamp
+        authorName: authorName,
+        timestamp: timestamp,
+        messageText: text
     };
 
     if (!Store.messages) Store.messages = [];
