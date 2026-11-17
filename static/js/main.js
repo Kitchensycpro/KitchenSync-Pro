@@ -498,7 +498,7 @@ const MANAGER_CHECKLIST_SPECS = {
     }
 };
 
-function renderManagerAssignmentWidget(targetId) {
+function renderCookAssignmentWidget(targetId) {
     if (!targetId) {
         const activeView = document.querySelector('.app-view.active');
         targetId = (activeView && activeView.id === 'view-gm-dashboard') ? 'gm-cook-widget-box' : 'mgr-cook-widget-box';
@@ -507,7 +507,6 @@ function renderManagerAssignmentWidget(targetId) {
     const container = document.getElementById(targetId);
     if (!container) return;
 
-    // Fallback: if employee array is empty or filtering is too strict, show all staff members
     let cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
@@ -516,18 +515,21 @@ function renderManagerAssignmentWidget(targetId) {
         cooks = Store.employees;
     }
 
+    // Complete station list including both opening splits and closing shifts
     const stations = [
-        { key: "range_open", label: "Range Open" },
-        { key: "mid_open", label: "Mid Open" },
-        { key: "grill_fry_open", label: "Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" }
+        { key: "range_open", label: "🍳 Range Open" },
+        { key: "mid_open", label: "🥗 Mid Open" },
+        { key: "grill_fry_open", label: "🔥 Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "🍳/🥗 Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "🔥/🥗 Grill/Fry/Mid-Split Open" },
+        { key: "range_mid_split_close", label: "🌙🍳/🥗 Range/Mid-Split Close" },
+        { key: "grill_fry_mid_split_close", label: "🌙🔥/🥗 Grill/Fry/Mid-Split Close" }
     ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening, split, or closing kitchen stations.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
@@ -555,7 +557,6 @@ function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
 
-    // List of predefined choices for Manager Extra Duties
     const managerExtraDutyChoices = [
         "Deep Clean Walk-In Cooler & Freezers",
         "Weekly Inventory & Food Cost Audit",
@@ -621,7 +622,6 @@ function renderManagerAssignmentWidget() {
         </div>
     `;
 }
-
 function submitManagerExtraDutyFromGM() {
     const empId = document.getElementById('gm-sel-mgr-duty-emp').value;
     const dutyText = document.getElementById('gm-sel-mgr-duty-choice').value;
