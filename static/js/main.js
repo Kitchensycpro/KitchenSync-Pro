@@ -515,21 +515,21 @@ function renderCookAssignmentWidget(targetId) {
         cooks = Store.employees;
     }
 
-    // Keys must match your CHECKLIST_SPECS keys precisely
+    // Include the closing shift station keys right here in the single-select array:
     const stations = [
-        { key: "range_open", label: "🍳 Range Open" },
-        { key: "mid_open", label: "🥗 Mid Open" },
-        { key: "grill_fry_open", label: "🔥 Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "🍳/🥗 Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "🔥/🥗 Grill/Fry/Mid-Split Open" },
-        { key: "range_mid_split_close", label: "🌙🍳/🥗 Range/Mid-Split Close" },
-        { key: "grill_fry_mid_split_close", label: "🌙🔥/🥗 Grill/Fry/Mid-Split Close" }
+        { key: "range_open", label: "Range Open" },
+        { key: "mid_open", label: "Mid Open" },
+        { key: "grill_fry_open", label: "Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" },
+        { key: "range_mid_split_close", label: "Range/Mid-Split Close" },
+        { key: "grill_fry_mid_split_close", label: "Grill/Fry/Mid-Split Close" }
     ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening, split, or closing kitchen stations.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
@@ -552,7 +552,6 @@ function renderCookAssignmentWidget(targetId) {
         </div>
     `;
 }
-
 function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
