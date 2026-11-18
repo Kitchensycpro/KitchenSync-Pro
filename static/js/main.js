@@ -2599,12 +2599,6 @@ function renderManagerDashboard() {
         return proj !== "" && (status.includes("pending") || status.includes("completed"));
     });
 
-    let cooks = Store.employees.filter(e => {
-        const r = String(e.role || e.Role || "").toLowerCase();
-        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
-    });
-    if (cooks.length === 0) cooks = Store.employees;
-
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
@@ -2614,47 +2608,8 @@ function renderManagerDashboard() {
         <!-- SPECIAL PROJECT WIDGET -->
         <div id="special-project-widget-container"></div>
 
-        <!-- 1. CONSOLIDATED COOK ASSIGNMENTS, PREP & SPECIAL PROJECTS WIDGET -->
+        <!-- THE CONSOLIDATED ASSIGNMENT WIDGET (Single source of truth, no loose boxes) -->
         <div id="mgr-cook-widget-box"></div>
-
-        <!-- 2. NEW PREP DUTY ASSIGNMENT WIDGET -->
-        <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
-            <h4 style="color: #166534; margin-top: 0;">⏱️ Assign Pre-Shift / Mid-Shift / Post-Shift Prep</h4>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Utilize dead-time hours to delegate crucial kitchen prep tasks based on predicted volume.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 1rem;">
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Select Cook:</label>
-                    <select id="prep-duty-emp" class="form-control" style="width: 100%; margin-top: 4px;">
-                        <option value="">-- Select Cook --</option>
-                        ${cooks.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: bold; color: #166534;">Shift Time Window:</label>
-                    <select id="prep-duty-window" class="form-control" style="width: 100%; margin-top: 4px;">
-                        <option value="">-- Select Window --</option>
-                        <option value="Pre-Shift (6:30 a.m. - 7:45 a.m.)">☀️ Pre-Shift (6:30 a.m. - 7:45 a.m.)</option>
-                        <option value="Mid-Shift (3:00 p.m. - 4:00 p.m.)">🌤️ Mid-Shift (3:00 p.m. - 4:00 p.m.)</option>
-                        <option value="Post-Shift (6:45 p.m. - 7:45 p.m.)">🌙 Post-Shift (6:45 p.m. - 7:45 p.m.)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Assign:</label>
-                <div style="max-height: 160px; overflow-y: auto; background: white; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
-                    ${typeof PREP_DUTY_TASKS !== 'undefined' ? PREP_DUTY_TASKS.map(task => `
-                        <label style="font-size: 0.85rem; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #1e293b;">
-                            <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
-                            <span>${task}</span>
-                        </label>
-                    `).join('') : ''}
-                </div>
-            </div>
-
-            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
-        </div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
             <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
@@ -2746,7 +2701,7 @@ function renderManagerDashboard() {
                                 <td><strong>${sScore}%</strong> (${tasksCompleted}/${totalTasks})</td>
                                 <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
                                 <td onclick="event.stopPropagation()">
-                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.85rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
                                     <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.75rem; margin-left: 4px; background: #e2e8f0;" onclick="openEditAuditModal('${sId}')">Edit ✏️</button>
                                 </td>
                             </tr>
