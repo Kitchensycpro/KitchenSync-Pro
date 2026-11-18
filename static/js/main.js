@@ -3315,8 +3315,14 @@ function renderGMDashboard() {
         <!-- COOK SPECIAL PROJECTS & PREP DUTIES AUDIT   -->
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #166534;">
-            <h4 style="color: #166534; margin-top: 0;">📋 Cook Special Projects & Prep Duty Audit Trail</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties for ${lookupDate}.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 0.5rem;">
+                <h4 style="color: #166534; margin: 0;">📋 Cook Special Projects & Prep Duty Audit Trail</h4>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
+                    <input type="date" id="gm-audit-calendar-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties for ${lookupDate}.</p>
             
             <table class="data-table" style="width: 100%; margin-top: 1rem;">
                 <thead>
