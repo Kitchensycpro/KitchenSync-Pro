@@ -2757,95 +2757,124 @@ function renderManagerDashboard() {
     renderMessageBoard();
     renderCookAssignmentWidget('mgr-cook-widget-box');
 }
-function renderCookAssignmentWidget(targetId) {
-    if (!targetId) {
-        const activeView = document.querySelector('.app-view.active');
-        targetId = (activeView && activeView.id === 'view-gm-dashboard') ? 'gm-cook-widget-box' : 'mgr-cook-widget-box';
-    }
-
+function renderCookAssignmentWidget(targetId = 'mgr-cook-widget-box') {
     const container = document.getElementById(targetId);
     if (!container) return;
 
-    let cooks = Store.employees.filter(e => {
-        const r = String(e.role || e.Role || "").toLowerCase();
-        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
-    });
-    if (cooks.length === 0) {
-        cooks = Store.employees;
-    }
+    // Filter active cooks (and staff) cleanly without duplicates
+    const cooksList = Array.from(new Map(
+        Store.employees
+            .filter(e => {
+                const r = String(e.role || e.Role || 'cook').toLowerCase();
+                const isActive = e.active === undefined || e.active === true || String(e.active).toLowerCase() === 'true';
+                return r === 'cook' && isActive;
+            })
+            .map(emp => [String(emp.id || emp.ID || emp.name || emp.Name).trim(), emp])
+    ).values());
 
-    const uniqueEmployees = Array.from(new Map(cooks.map(e => [String(e.id || e.ID || e.name || e.Name).trim(), e])).values());
-    const optionsHtml = uniqueEmployees.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('');
+    const cookOptionsHtml = cooksList.map(e => 
+        `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`
+    ).join('');
 
-    // All stations from CHECKLIST_SPECS titles
-    const stations = [
-        { key: "range_open", label: "Range Open" },
-        { key: "mid_open", label: "Mid Open" },
-        { key: "grill_fry_open", label: "Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" },
-        { key: "range_mid_split_close", label: "Range/Mid-Split Close" },
-        { key: "grill_fry_mid_split_close", label: "Grill/Fry/Mid-Split Close" }
+    // Full unified list of all 7 opening, split, and closing station keys
+    const ALL_COOK_STATIONS = [
+        { key: 'range_open', label: '☀️ Range Open (3-Cook Line)' },
+        { key: 'mid_open', label: '☀️ Mid Open (3-Cook Line)' },
+        { key: 'grill_fry_open', label: '☀️ Grill / Fry Open (3-Cook Line)' },
+        { key: 'range_mid_split_open', label: '🌅 Range / Mid-Split Open (2-Cook Split)' },
+        { key: 'grill_fry_mid_split_open', label: '🌅 Grill / Fry / Mid-Split Open (2-Cook Split)' },
+        { key: 'range_mid_split_close', label: '🌙 Range / Mid-Split Close (Closing Line)' },
+        { key: 'grill_fry_mid_split_close', label: '🌙 Grill / Fry / Mid-Split Close (Closing Line)' }
+    ];
+
+    const stationOptionsHtml = ALL_COOK_STATIONS.map(st => 
+        `<option value="${st.key}">${st.label}</option>`
+    ).join('');
+
+    // Standard window prep tasks
+    const PREP_DUTIES_LIST = [
+        "Portion Proteins & Burgers",
+        "Prep Homefries & Hashbrowns",
+        "Slice Deli Meats & Cheeses",
+        "Restock Line Bain-Marie & Sauces",
+        "Prep Salad & Cold Station",
+        "Filter & Clean Fryolators",
+        "Stock Paper Goods & To-Go Containers"
     ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h3 style="color: #1e3a8a; margin-top: 0;">🍳 Cook Assignments, Prep & Special Projects</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Manage station shifts, window prep tasks, and special project/extra duty delegations for kitchen staff.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #0369a1; margin-top: 0;">📍 Assign Station Checklist</h4>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                Assign daily opening/closing stations, delegate window prep tasks, and log special projects.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                <!-- 1. STATION ASSIGNMENT -->
+                <div style="background: #ffffff; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #0369a1; margin-top: 0; margin-bottom: 10px;">📍 Daily Station Assignment</h4>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
                         <select id="sel-cook-employee-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
-                            <option value="">-- Choose Cook --</option>
-                            ${optionsHtml}
+                            <option value="">-- Select Team Member --</option>
+                            ${cookOptionsHtml}
                         </select>
                     </div>
-                    <div style="margin-bottom: 8px;">
+                    <div style="margin-bottom: 10px;">
                         <label style="font-size: 0.85rem; font-weight: bold;">Select Station:</label>
                         <select id="sel-cook-station-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
-                            ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
+                            <option value="">-- Select Station --</option>
+                            ${stationOptionsHtml}
                         </select>
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="assignCookShift('${targetId}')">Assign Station 📌</button>
+                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('${targetId}')">
+                        Assign Station & Checklist 📌
+                    </button>
                 </div>
 
-                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                    <h4 style="color: #c2410c; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h4>
+                <!-- 2. SPECIAL PROJECT DELEGATION -->
+                <div style="background: #ffffff; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #15803d; margin-top: 0; margin-bottom: 10px;">🛠️ Delegate Special Project</h4>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
                         <select id="sel-project-employee-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
-                            <option value="">-- Choose Cook --</option>
-                            ${optionsHtml}
+                            <option value="">-- Select Team Member --</option>
+                            ${cookOptionsHtml}
                         </select>
                     </div>
-                    <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.85rem; font-weight: bold;">Project Description:</label>
-                        <input type="text" id="input-project-desc-${targetId}" class="form-control" placeholder="e.g., Deep clean fry station line" style="width: 100%; margin-top: 4px;">
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Project / Deep-Clean Task:</label>
+                        <input type="text" id="input-project-desc-${targetId}" class="form-control" placeholder="e.g., Pull range side hoods..." style="width: 100%; margin-top: 4px;">
                     </div>
-                    <button class="btn btn-secondary" style="width: 100%; background: #c2410c; color: white; margin-top: 8px;" onclick="assignSpecialProject('${targetId}')">Assign Project 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%; background: #16a34a; border-color: #16a34a;" onclick="assignSpecialProject('${targetId}')">
+                        Assign Special Project 📋
+                    </button>
                 </div>
-            </div>
 
-            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 1rem;">
-                <h4 style="color: #16a34a; margin-top: 0;">📋 Select Prep Tasks to Delegate</h4>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; max-height: 150px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px;" id="prep-tasks-checkbox-group-${targetId}">
+                <!-- 3. WINDOW PREP DUTIES -->
+                <div style="background: #ffffff; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #b45309; margin-top: 0; margin-bottom: 10px;">🔪 Window Prep Duties</h4>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
+                        <select id="sel-prep-employee-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
+                            <option value="">-- Select Team Member --</option>
+                            ${cookOptionsHtml}
+                        </select>
+                    </div>
+                    <div style="max-height: 110px; overflow-y: auto; border: 1px solid #e2e8f0; padding: 6px; border-radius: 4px; margin-bottom: 10px; font-size: 0.8rem;">
+                        ${PREP_DUTIES_LIST.map((task, idx) => `
+                            <label style="display: block; margin-bottom: 4px; cursor: pointer;">
+                                <input type="checkbox" class="prep-task-chk-${targetId}" value="${task}"> ${task}
+                            </label>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; background: #d97706; border-color: #d97706;" onclick="assignPrepDuties('${targetId}')">
+                        Assign Prep List 🔪
+                    </button>
                 </div>
-                <button class="btn btn-primary" style="width: 100%; margin-top: 10px; background: #16a34a;" onclick="assignPrepDuties('${targetId}')">Assign Prep Duties to Cook 📌</button>
             </div>
         </div>
     `;
-
-    const prepGroup = document.getElementById(`prep-tasks-checkbox-group-${targetId}`);
-    if (prepGroup && typeof PREP_DUTY_TASKS !== 'undefined') {
-        prepGroup.innerHTML = PREP_DUTY_TASKS.map(task => `
-            <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" class="prep-task-chk-${targetId}" value="${task}"> ${task}
-            </label>
-        `).join('');
-    }
 }
 function assignCookShift(targetId = 'mgr-cook-widget-box') {
     const empSelect = document.getElementById(`sel-cook-employee-${targetId}`);
@@ -3086,6 +3115,17 @@ function renderGMDashboard() {
     });
     if (cooksList.length === 0) cooksList = Store.employees;
 
+    // Full unified list of all 7 opening, split, and closing stations
+    const ALL_COOK_STATIONS = [
+        { key: 'range_open', label: '☀️ Range Open (3-Cook Line)' },
+        { key: 'mid_open', label: '☀️ Mid Open (3-Cook Line)' },
+        { key: 'grill_fry_open', label: '☀️ Grill / Fry Open (3-Cook Line)' },
+        { key: 'range_mid_split_open', label: '🌅 Range / Mid-Split Open (2-Cook Split)' },
+        { key: 'grill_fry_mid_split_open', label: '🌅 Grill / Fry / Mid-Split Open (2-Cook Split)' },
+        { key: 'range_mid_split_close', label: '🌙 Range / Mid-Split Close (Closing Line)' },
+        { key: 'grill_fry_mid_split_close', label: '🌙 Grill / Fry / Mid-Split Close (Closing Line)' }
+    ];
+
     const managerExtraDutyChoices = [
         "Deep Clean Walk-In Cooler & Freezers",
         "Weekly Inventory & Food Cost Audit",
@@ -3093,6 +3133,16 @@ function renderGMDashboard() {
         "Vendor Delivery & Invoice Reconciliation",
         "Staff Performance & Shift Execution Review",
         "Equipment Maintenance & Sanitation Audit"
+    ];
+
+    const PREP_DUTIES_LIST = [
+        "Portion Proteins & Burgers",
+        "Prep Homefries & Hashbrowns",
+        "Slice Deli Meats & Cheeses",
+        "Restock Line Bain-Marie & Sauces",
+        "Prep Salad & Cold Station",
+        "Filter & Clean Fryolators",
+        "Stock Paper Goods & To-Go Containers"
     ];
 
     container.innerHTML = `
@@ -3123,7 +3173,7 @@ function renderGMDashboard() {
             <div class="card" style="text-align: center;"><span style="font-size: 0.85rem; color: #64748b;">Pending Cert Sign-Offs</span><h2 style="color: #dc2626; margin: 5px 0 0 0;">${pendingCerts.length}</h2></div>
         </div>
 
-        <!-- UNIFIED COOK ASSIGNMENTS BOX -->
+        <!-- UNIFIED COOK ASSIGNMENTS BOX WITH FULL STATION LIST -->
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 2px solid #166534;">
             <h4 style="color: #166534; margin-top: 0;">👨‍🍳 Cook Assignments, Prep & Special Projects</h4>
             <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Manage station shifts, window prep tasks, and special project/extra duty delegations for kitchen staff.</p>
@@ -3135,20 +3185,19 @@ function renderGMDashboard() {
                     <h5 style="color: #166534; margin-top: 0;">📍 Assign Station Checklist</h5>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
-                        <select id="sel-cook-employee-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                        <select id="sel-cook-employee-gm-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
                             <option value="">-- Choose Cook --</option>
                             ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
                         </select>
                     </div>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Station:</label>
-                        <select id="sel-cook-station-mgr-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="range_open">Range Open</option>
-                            <option value="mid_open">Mid Open</option>
-                            <option value="grill_fry_open">Grill/Fry Open</option>
+                        <select id="sel-cook-station-gm-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <option value="">-- Select Station --</option>
+                            ${ALL_COOK_STATIONS.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
                         </select>
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Station 📌</button>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="assignCookShift('gm-cook-widget-box')">Assign Station 📌</button>
                 </div>
 
                 <!-- Special Project / Extra Duty Assignment Sub-box -->
@@ -3156,34 +3205,41 @@ function renderGMDashboard() {
                     <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h5>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook:</label>
-                        <select id="gm-sel-cook-proj-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                        <select id="sel-project-employee-gm-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
                             <option value="">-- Choose Cook --</option>
                             ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
                         </select>
                     </div>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Project Description:</label>
-                        <input type="text" id="gm-sel-cook-proj-text" placeholder="e.g., Deep clean fry station line" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;" />
+                        <input type="text" id="input-project-desc-gm-cook-widget-box" placeholder="e.g., Deep clean fry station line" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box;" />
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitCookSpecialProjectFromGM()">Assign Project 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="assignSpecialProject('gm-cook-widget-box')">Assign Project 🚀</button>
                 </div>
 
             </div>
 
             <!-- Prep Task Checkboxes Section -->
             <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #bbf7d0; margin-bottom: 1rem;">
+                <div style="margin-bottom: 8px;">
+                    <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Cook for Prep Tasks:</label>
+                    <select id="sel-prep-employee-gm-cook-widget-box" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; margin-bottom: 8px;">
+                        <option value="">-- Choose Cook --</option>
+                        ${cooksList.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('')}
+                    </select>
+                </div>
                 <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Delegate:</label>
                 <div style="max-height: 140px; overflow-y: auto; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px;">
-                    ${typeof PREP_DUTY_TASKS !== 'undefined' ? PREP_DUTY_TASKS.map(task => `
+                    ${PREP_DUTIES_LIST.map(task => `
                         <label style="font-size: 0.8rem; display: flex; align-items: flex-start; gap: 6px; cursor: pointer; color: #1e293b;">
-                            <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
+                            <input type="checkbox" class="prep-task-chk-gm-cook-widget-box" value="${task}" style="margin-top: 2px;">
                             <span>${task}</span>
                         </label>
-                    `).join('') : ''}
+                    `).join('')}
                 </div>
             </div>
 
-            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534; width: 100%;" onclick="assignPrepDuty()">Assign Prep Duties to Cook 📌</button>
+            <button class="btn btn-primary" style="background-color: #166534; border-color: #166534; width: 100%;" onclick="assignPrepDuties('gm-cook-widget-box')">Assign Prep Duties to Cook 📌</button>
         </div>
 
         <!-- COOK SHIFT AUDITS TABLE -->
@@ -3260,7 +3316,7 @@ function renderGMDashboard() {
         <!-- ========================================== -->
         <div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid #166534;">
             <h4 style="color: #166534; margin-top: 0;">📋 Cook Special Projects & Prep Duty Audit Trail</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties for ${lookupDate}.</p>
             
             <table class="data-table" style="width: 100%; margin-top: 1rem;">
                 <thead>
@@ -3274,29 +3330,46 @@ function renderGMDashboard() {
                 </thead>
                 <tbody>
                     ${(() => {
-                        const auditedCooks = Store.employees.filter(e => {
-                            const hasProj = e.specialProject || e.SpecialProject;
-                            return hasProj;
+                        const filteredProjects = Store.employees.filter(e => {
+                            const proj = String(e.specialProject || e.SpecialProject || "").trim();
+                            const prepTasks = e.assignedPrepTasks || e.AssignedPrepTasks;
+                            const hasPrep = prepTasks && (Array.isArray(prepTasks) ? prepTasks.length > 0 : JSON.parse(prepTasks || '[]').length > 0);
+                            
+                            if (proj === "" && !hasPrep) return false;
+
+                            const pDate = String(e.specialProjectDate || e.SpecialProjectDate || "").trim().substring(0, 10);
+                            return pDate === lookupDate;
                         });
 
-                        if (auditedCooks.length === 0) {
-                            return `<tr><td colspan="5" style="text-align: center; color: #64748b;">No special projects logged for audit.</td></tr>`;
+                        if (filteredProjects.length === 0) {
+                            return `<tr><td colspan="5" style="text-align: center; color: #64748b;">No active special projects or prep duties assigned for ${lookupDate}.</td></tr>`;
                         }
 
-                        return auditedCooks.map(cook => {
-                            const cName = cook.name || cook.Name || 'Cook';
-                            const proj = cook.specialProject || cook.SpecialProject || 'None Assigned';
-                            const projStatus = cook.specialProjectStatus || cook.SpecialProjectStatus || 'Pending';
-                            const timestamp = cook.auditDate || lookupDate;
-                            const isSignedOff = cook.gmAuditSignOff === true || String(cook.gmAuditSignOff).toLowerCase() === 'true';
+                        return filteredProjects.map(cook => {
                             const cookId = cook.id || cook.ID;
+                            const cName = cook.name || cook.Name || 'Cook';
+                            const projectDesc = cook.specialProject || cook.SpecialProject || '';
+                            const projStatus = String(cook.specialProjectStatus || cook.SpecialProjectStatus || 'Assigned / In Progress');
+                            const timestamp = cook.specialProjectDate || lookupDate;
+                            const isSignedOff = projStatus.toLowerCase().includes("signed off") || projStatus.toLowerCase().includes("completed") || cook.gmAuditSignOff === true;
+
+                            let taskDisplay = projectDesc;
+                            const prepTasks = cook.assignedPrepTasks || cook.AssignedPrepTasks;
+                            if (prepTasks) {
+                                try {
+                                    const parsed = typeof prepTasks === 'string' ? JSON.parse(prepTasks) : prepTasks;
+                                    if (Array.isArray(parsed) && parsed.length > 0) {
+                                        taskDisplay = projectDesc ? `${projectDesc} | Prep: ${parsed.join(', ')}` : `Prep Duties: ${parsed.join(', ')}`;
+                                    }
+                                } catch(err) {}
+                            }
 
                             return `
                                 <tr>
                                     <td><span style="font-size: 0.85rem; color: #475569; font-weight: 600;">${timestamp}</span></td>
                                     <td><strong>${cName}</strong></td>
-                                    <td>${proj}</td>
-                                    <td><span style="font-weight: bold; color: ${projStatus.includes('Complete') ? '#166534' : '#c2410c'};">${projStatus}</span></td>
+                                    <td>${taskDisplay || 'Assigned Duty'}</td>
+                                    <td><span style="font-weight: bold; color: ${isSignedOff ? '#166534' : '#c2410c'};">${projStatus}</span></td>
                                     <td>
                                         ${isSignedOff ? 
                                             '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ GM Verified</span>' : 
