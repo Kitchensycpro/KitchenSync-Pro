@@ -556,65 +556,86 @@ function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
 
-    const managerExtraDutyChoices = [
-        "Deep Clean Walk-In Cooler & Freezers",
-        "Weekly Inventory & Food Cost Audit",
-        "HACCP Temperature & Safety Log Review",
-        "Vendor Delivery & Invoice Reconciliation",
-        "Staff Performance & Shift Execution Review",
-        "Equipment Maintenance & Sanitation Audit"
-    ];
+    const selectedDateStr = document.getElementById('shift-date')?.value || new Date().toISOString().split('T')[0];
 
-    const managers = Store.employees.filter(e => {
-        const role = String(e.role || e.Role || '').trim().toLowerCase();
-        return role === 'manager' || role === 'gm';
-    });
+    const uniqueEmployees = Array.from(new Map(Store.employees.map(emp => [String(emp.id || emp.ID || emp.name || emp.Name).trim(), emp])).values());
+    const optionsHtml = uniqueEmployees.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('');
 
     container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem; background: #ffffff; border: 2px solid #1e3a8a;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">🛡️ Manager Assignments & Extra Duties</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Delegate operational oversight, extra duties, and opening/closing checklists to management staff.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">👥 Station & Shift Line Assignments</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Schedule daily opening and closing line positions.</p>
+            <div style="margin: 1rem 0;">
+                <label style="font-weight: 600; font-size: 0.9rem;">Select Date:</label>
+                <input type="date" id="shift-date" class="form-control" value="${selectedDateStr}" onchange="renderManagerAssignmentWidget()" style="margin-top: 4px; max-width: 200px;">
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
                 
-                <!-- Extra Duty Assignment Box -->
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <h5 style="color: #c2410c; margin-top: 0;">🛠️ Assign Manager Extra Duty</h5>
+                <!-- Morning Shift 2-Cook Split -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #0369a1; margin-top: 0;">☀️ Morning Shift 2-Cook Split</h4>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
-                        <select id="gm-sel-mgr-duty-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Choose Manager --</option>
-                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        <label style="font-size: 0.85rem; font-weight: bold;">Range / Mid-Split Open:</label>
+                        <select id="sel-range_mid_split_open" class="form-control" style="width: 100%;">
+                            <option value="">-- Select Cook --</option>
+                            ${optionsHtml}
                         </select>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Duty Task:</label>
-                        <select id="gm-sel-mgr-duty-choice" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Select Extra Duty Task --</option>
-                            ${managerExtraDutyChoices.map(duty => `<option value="${duty}">${duty}</option>`).join('')}
+                        <label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry / Mid-Split Open:</label>
+                        <select id="sel-grill_fry_mid_split_open" class="form-control" style="width: 100%;">
+                            <option value="">-- Select Cook --</option>
+                            ${optionsHtml}
                         </select>
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #c2410c; border: none; color: white;" onclick="submitManagerExtraDutyFromGM()">Assign Extra Duty 🚀</button>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="assignCooksGroup(['sel-range_mid_split_open', 'sel-grill_fry_mid_split_open'])">Assign Split Line 📌</button>
                 </div>
 
-                <!-- Manager Checklist Assignment Box -->
-                <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    <h5 style="color: #166534; margin-top: 0;">📋 Assign Manager Shift Checklist</h5>
+                <!-- Morning 3-Cook Line -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #0369a1; margin-top: 0;">☀️ Morning 3-Cook Line</h4>
+                    <div style="margin-bottom: 6px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Range Open:</label>
+                        <select id="sel-range_open" class="form-control" style="width: 100%;">
+                            <option value="">-- Select --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Mid Open:</label>
+                        <select id="sel-mid_open" class="form-control" style="width: 100%;">
+                            <option value="">-- Select --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 6px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry Open:</label>
+                        <select id="sel-grill_fry_open" class="form-control" style="width: 100%;">
+                            <option value="">-- Select --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 4px;" onclick="assignCooksGroup(['sel-range_open', 'sel-mid_open', 'sel-grill_fry_open'])">Assign 3-Cook Line 📌</button>
+                </div>
+
+                <!-- Night Closing Line (Added) -->
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #c2410c; margin-top: 0;">🌙 Night Closing Line</h4>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Manager:</label>
-                        <select id="gm-sel-mgr-chk-emp" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="">-- Choose Manager --</option>
-                            ${managers.map(m => `<option value="${m.id || m.ID}">${m.name || m.Name} (${m.role || m.Role})</option>`).join('')}
+                        <label style="font-size: 0.85rem; font-weight: bold;">Range / Mid-Split Close:</label>
+                        <select id="sel-range_mid_split_close" class="form-control" style="width: 100%;">
+                            <option value="">-- Select Closer --</option>
+                            ${optionsHtml}
                         </select>
                     </div>
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 0.8rem; font-weight: bold; display: block; margin-bottom: 3px;">Select Shift Type:</label>
-                        <select id="gm-sel-mgr-chk-type" style="width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                            <option value="Opening Shift">Opening Shift Checklist</option>
-                            <option value="Closing Shift">Closing Shift Checklist</option>
+                        <label style="font-size: 0.85rem; font-weight: bold;">Grill/Fry / Mid-Split Close:</label>
+                        <select id="sel-grill_fry_mid_split_close" class="form-control" style="width: 100%;">
+                            <option value="">-- Select Closer --</option>
+                            ${optionsHtml}
                         </select>
                     </div>
-                    <button class="btn btn-primary" style="width: 100%; padding: 6px; font-size: 0.85rem; background: #166534; border: none; color: white;" onclick="submitManagerChecklistFromGM()">Assign Checklist 📋</button>
+                    <button class="btn btn-primary" style="width: 100%; background: #c2410c; border-color: #c2410c; margin-top: 8px;" onclick="assignCooksGroup(['sel-range_mid_split_close', 'sel-grill_fry_mid_split_close'])">Assign Closing Line 📌</button>
                 </div>
 
             </div>
