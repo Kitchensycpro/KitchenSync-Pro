@@ -498,60 +498,7 @@ const MANAGER_CHECKLIST_SPECS = {
     }
 };
 
-function renderCookAssignmentWidget(targetId) {
-    if (!targetId) {
-        const activeView = document.querySelector('.app-view.active');
-        targetId = (activeView && activeView.id === 'view-gm-dashboard') ? 'gm-cook-widget-box' : 'mgr-cook-widget-box';
-    }
 
-    const container = document.getElementById(targetId);
-    if (!container) return;
-
-    let cooks = Store.employees.filter(e => {
-        const r = String(e.role || e.Role || "").toLowerCase();
-        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
-    });
-    if (cooks.length === 0) {
-        cooks = Store.employees;
-    }
-
-    // Complete station list including closing shift keys
-    const stations = [
-        { key: "range_open", label: "Range Open" },
-        { key: "mid_open", label: "Mid Open" },
-        { key: "grill_fry_open", label: "Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" },
-        { key: "range_mid_split_close", label: "Range/Mid-Split Close" },
-        { key: "grill_fry_mid_split_close", label: "Grill/Fry/Mid-Split Close" }
-    ];
-
-    container.innerHTML = `
-        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Select Team Member:</label>
-                    <select id="sel-cook-employee-${targetId}" class="form-control" style="margin-top: 5px;">
-                        <option value="">-- Choose Team Member --</option>
-                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || c.Role || 'Staff'})</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Assigned Station:</label>
-                    <select id="sel-cook-station-${targetId}" class="form-control" style="margin-top: 5px;">
-                        ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
-                    </select>
-                </div>
-                <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('${targetId}')">Assign Cook Shift 🚀</button>
-                </div>
-            </div>
-        </div>
-    `;
-}
 function renderManagerAssignmentWidget() {
     const container = document.getElementById('manager-assignment-widget-container');
     if (!container) return;
@@ -2652,20 +2599,11 @@ function renderManagerDashboard() {
         return proj !== "" && (status.includes("pending") || status.includes("completed"));
     });
 
-    // Get active cooks for assignment dropdowns inline
     let cooks = Store.employees.filter(e => {
         const r = String(e.role || e.Role || "").toLowerCase();
         return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
     });
     if (cooks.length === 0) cooks = Store.employees;
-
-    const stations = [
-        { key: "range_open", label: "Range Open" },
-        { key: "mid_open", label: "Mid Open" },
-        { key: "grill_fry_open", label: "Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" }
-    ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
@@ -2676,30 +2614,8 @@ function renderManagerDashboard() {
         <!-- SPECIAL PROJECT WIDGET -->
         <div id="special-project-widget-container"></div>
 
-        <!-- 1. COOK LINE STATION ASSIGNMENT WIDGET -->
-        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
-            <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Select Team Member:</label>
-                    <select id="sel-cook-employee-mgr-cook-widget-box" class="form-control" style="margin-top: 5px;">
-                        <option value="">-- Choose Team Member --</option>
-                        ${cooks.map(c => `<option value="${c.id || c.ID}">${c.name || c.Name} (${c.role || c.Role || 'Staff'})</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label style="font-weight: 600; font-size: 0.85rem;">Assigned Station:</label>
-                    <select id="sel-cook-station-mgr-cook-widget-box" class="form-control" style="margin-top: 5px;">
-                        ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
-                    </select>
-                </div>
-                <div style="align-self: flex-end;">
-                    <button class="btn btn-primary" style="width: 100%;" onclick="assignCookShift('mgr-cook-widget-box')">Assign Cook Shift 🚀</button>
-                </div>
-            </div>
-        </div>
+        <!-- 1. CONSOLIDATED COOK ASSIGNMENTS, PREP & SPECIAL PROJECTS WIDGET -->
+        <div id="mgr-cook-widget-box"></div>
 
         <!-- 2. NEW PREP DUTY ASSIGNMENT WIDGET -->
         <div class="card" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0;">
@@ -2728,12 +2644,12 @@ function renderManagerDashboard() {
             <div style="margin-bottom: 1rem;">
                 <label style="font-size: 0.85rem; font-weight: bold; color: #166534; display: block; margin-bottom: 6px;">Select Prep Tasks to Assign:</label>
                 <div style="max-height: 160px; overflow-y: auto; background: white; border: 1px solid #bbf7d0; padding: 10px; border-radius: 4px; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 8px;">
-                    ${PREP_DUTY_TASKS.map(task => `
+                    ${typeof PREP_DUTY_TASKS !== 'undefined' ? PREP_DUTY_TASKS.map(task => `
                         <label style="font-size: 0.85rem; display: flex; align-items: flex-start; gap: 8px; cursor: pointer; color: #1e293b;">
                             <input type="checkbox" class="prep-task-checkbox" value="${task}" style="margin-top: 2px;">
                             <span>${task}</span>
                         </label>
-                    `).join('')}
+                    `).join('') : ''}
                 </div>
             </div>
 
@@ -2831,6 +2747,7 @@ function renderManagerDashboard() {
                                 <td><span style="font-weight: bold; color: #1e3a8a;">${sTier}</span></td>
                                 <td onclick="event.stopPropagation()">
                                     ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffShift('${sId}')">Sign Off ✍️</button>`}
+                                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.75rem; margin-left: 4px; background: #e2e8f0;" onclick="openEditAuditModal('${sId}')">Edit ✏️</button>
                                 </td>
                             </tr>
                         `;
@@ -2842,6 +2759,285 @@ function renderManagerDashboard() {
         
     renderMessageBoard();
     renderSpecialProjectWidget();
+    renderCookAssignmentWidget('mgr-cook-widget-box');
+}
+
+function renderCookAssignmentWidget(targetId) {
+    if (!targetId) {
+        const activeView = document.querySelector('.app-view.active');
+        targetId = (activeView && activeView.id === 'view-gm-dashboard') ? 'gm-cook-widget-box' : 'mgr-cook-widget-box';
+    }
+
+    const container = document.getElementById(targetId);
+    if (!container) return;
+
+    let cooks = Store.employees.filter(e => {
+        const r = String(e.role || e.Role || "").toLowerCase();
+        return !r.includes('manager') && !r.includes('gm') && !r.includes('supervisor');
+    });
+    if (cooks.length === 0) {
+        cooks = Store.employees;
+    }
+
+    const uniqueEmployees = Array.from(new Map(cooks.map(e => [String(e.id || e.ID || e.name || e.Name).trim(), e])).values());
+    const optionsHtml = uniqueEmployees.map(e => `<option value="${e.id || e.ID}">${e.name || e.Name}</option>`).join('');
+
+    // All stations from CHECKLIST_SPECS titles
+    const stations = [
+        { key: "range_open", label: "Range Open" },
+        { key: "mid_open", label: "Mid Open" },
+        { key: "grill_fry_open", label: "Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" },
+        { key: "range_mid_split_close", label: "Range/Mid-Split Close" },
+        { key: "grill_fry_mid_split_close", label: "Grill/Fry/Mid-Split Close" }
+    ];
+
+    container.innerHTML = `
+        <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
+            <h3 style="color: #1e3a8a; margin-top: 0;">🍳 Cook Assignments, Prep & Special Projects</h3>
+            <p style="font-size: 0.85rem; color: #64748b;">Manage station shifts, window prep tasks, and special project/extra duty delegations for kitchen staff.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #0369a1; margin-top: 0;">📍 Assign Station Checklist</h4>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
+                        <select id="sel-cook-employee-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
+                            <option value="">-- Choose Cook --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Select Station:</label>
+                        <select id="sel-cook-station-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
+                            ${stations.map(st => `<option value="${st.key}">${st.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="assignCookShift('${targetId}')">Assign Station 📌</button>
+                </div>
+
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <h4 style="color: #c2410c; margin-top: 0;">🛠️ Assign Special Project / Extra Duty</h4>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Select Cook:</label>
+                        <select id="sel-project-employee-${targetId}" class="form-control" style="width: 100%; margin-top: 4px;">
+                            <option value="">-- Choose Cook --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: bold;">Project Description:</label>
+                        <input type="text" id="input-project-desc-${targetId}" class="form-control" placeholder="e.g., Deep clean fry station line" style="width: 100%; margin-top: 4px;">
+                    </div>
+                    <button class="btn btn-secondary" style="width: 100%; background: #c2410c; color: white; margin-top: 8px;" onclick="assignSpecialProject('${targetId}')">Assign Project 🚀</button>
+                </div>
+            </div>
+
+            <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-top: 1rem;">
+                <h4 style="color: #16a34a; margin-top: 0;">📋 Select Prep Tasks to Delegate</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; max-height: 150px; overflow-y: auto; border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px;" id="prep-tasks-checkbox-group-${targetId}">
+                </div>
+                <button class="btn btn-primary" style="width: 100%; margin-top: 10px; background: #16a34a;" onclick="assignPrepDuties('${targetId}')">Assign Prep Duties to Cook 📌</button>
+            </div>
+        </div>
+    `;
+
+    const prepGroup = document.getElementById(`prep-tasks-checkbox-group-${targetId}`);
+    if (prepGroup && typeof PREP_DUTY_TASKS !== 'undefined') {
+        prepGroup.innerHTML = PREP_DUTY_TASKS.map(task => `
+            <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" class="prep-task-chk-${targetId}" value="${task}"> ${task}
+            </label>
+        `).join('');
+    }
+}
+function assignCookShift(targetId = 'mgr-cook-widget-box') {
+    const empSelect = document.getElementById(`sel-cook-employee-${targetId}`);
+    const stationSelect = document.getElementById(`sel-cook-station-${targetId}`);
+
+    if (!empSelect || !empSelect.value || !stationSelect || !stationSelect.value) {
+        alert("Please select both a team member and an assigned station.");
+        return;
+    }
+
+    const empId = empSelect.value;
+    const stationKey = stationSelect.value;
+    const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
+    if (!emp) {
+        alert("❌ Error: Selected employee record not found.");
+        return;
+    }
+
+    emp.station = stationKey;
+    emp.Station = stationKey;
+
+    const todayStr = (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    const langKey = Store.lang || 'en';
+    const stationSpec = (typeof CHECKLIST_SPECS !== 'undefined' && 
+        ((CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][stationKey]) || 
+         (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][stationKey]) || 
+         CHECKLIST_SPECS[stationKey])) || { items: [] };
+
+    let taskItemsText = [];
+    if (stationSpec.items) {
+        if (Array.isArray(stationSpec.items)) {
+            taskItemsText = stationSpec.items;
+        } else {
+            taskItemsText = stationSpec.items[langKey] || stationSpec.items['en'] || [];
+        }
+    } else if (Array.isArray(stationSpec)) {
+        taskItemsText = stationSpec;
+    }
+
+    const serializedTasks = taskItemsText.map(t => {
+        const tText = typeof t === 'string' ? t : (t.desc || t.title || JSON.stringify(t));
+        return { label: tText, completed: false, checked: false };
+    });
+
+    const initialShift = {
+        id: `SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        empId: emp.id || emp.ID,
+        empName: emp.name || emp.Name,
+        role: emp.role || emp.Role || 'cook',
+        station: stationKey.replace(/_/g, ' ').toUpperCase(),
+        date: todayStr,
+        tasksCompleted: 0,
+        totalTasks: serializedTasks.length || 15,
+        scorePct: 0,
+        status: "Pending Review",
+        notes: JSON.stringify(serializedTasks),
+        managerSignOff: false,
+        tasks: serializedTasks,
+        EmpId: emp.id || emp.ID,
+        EmpName: emp.name || emp.Name,
+        ScorePct: 0,
+        TotalTasks: serializedTasks.length || 15,
+        TasksCompleted: 0
+    };
+
+    if (!Store.shifts) Store.shifts = [];
+    Store.shifts.push(initialShift);
+
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        return ApiService.request('saveShift', { shift: initialShift });
+    }).then(() => {
+        alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${stationKey.replace(/_/g, ' ').toUpperCase()}!`);
+        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
+        else {
+            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+        }
+    }).catch(err => {
+        console.error("Error assigning cook shift:", err);
+        alert("⚠️ Assignment saved locally, but cloud sync encountered an issue.");
+    });
+}
+
+// Synchronized Sign-Off & Audit Editing Functions
+function managerSignOffShift(shiftId) {
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) return;
+
+    shift.managerSignOff = true;
+    shift.ManagerSignOff = true;
+    shift.status = "Completed";
+    shift.Status = "Completed";
+
+    ApiService.request('saveShift', { shift: shift }).then(() => {
+        alert("✅ Shift successfully audited, signed off, and marked completed across all dashboards!");
+        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
+        else {
+            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+            if (typeof renderGMDashboard === 'function') renderGMDashboard();
+        }
+    }).catch(err => {
+        console.error("Error syncing shift sign-off:", err);
+        UIController.refreshActiveView();
+    });
+}
+// Synchronized Sign-Off & Audit Editing Functions
+function managerSignOffShift(shiftId) {
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) return;
+
+    shift.managerSignOff = true;
+    shift.ManagerSignOff = true;
+    shift.status = "Completed";
+    shift.Status = "Completed";
+
+    ApiService.request('saveShift', { shift: shift }).then(() => {
+        alert("✅ Shift successfully audited, signed off, and marked completed across all dashboards!");
+        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
+        else {
+            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+            if (typeof renderGMDashboard === 'function') renderGMDashboard();
+        }
+    }).catch(err => {
+        console.error("Error syncing shift sign-off:", err);
+        UIController.refreshActiveView();
+    });
+}
+
+function openEditAuditModal(shiftId) {
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) return;
+
+    const overlay = document.getElementById('shift-modal-overlay');
+    const modalBody = document.getElementById('shift-modal-body');
+    if (!overlay || !modalBody) return;
+
+    modalBody.innerHTML = `
+        <h3 style="color: #1e3a8a; margin-top: 0;">✏️ Edit Shift Audit Score</h3>
+        <p style="font-size: 0.85rem; color: #64748b;">Adjust compliance score and review details for <strong>${shift.empName || shift.EmpName}</strong> (${shift.station || shift.Station}).</p>
+        
+        <div style="margin: 1rem 0;">
+            <label style="font-weight: 600; font-size: 0.85rem;">Compliance Score (%):</label>
+            <input type="number" id="edit-audit-score-input" class="form-control" value="${shift.scorePct || shift.ScorePct || 0}" min="0" max="100" style="margin-top: 5px;">
+        </div>
+        <div style="margin: 1rem 0;">
+            <label style="font-weight: 600; font-size: 0.85rem;">Audit Notes / Score Adjustment Reason:</label>
+            <textarea id="edit-audit-notes-input" class="form-control" rows="3" style="margin-top: 5px;">${shift.auditNotes || ''}</textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+            <button class="btn btn-secondary" onclick="closeShiftChecklistModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitEditedAudit('${shift.id || shift.ID}')">Save Changes 💾</button>
+        </div>
+    `;
+    overlay.style.display = 'flex';
+}
+function submitEditedAudit(shiftId) {
+    const scoreInput = document.getElementById('edit-audit-score-input');
+    const notesInput = document.getElementById('edit-audit-notes-input');
+    if (!scoreInput) return;
+
+    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
+    if (!shift) return;
+
+    const newScore = Number(scoreInput.value);
+    shift.scorePct = newScore;
+    shift.ScorePct = newScore;
+    shift.status = "Completed";
+    shift.Status = "Completed";
+    shift.managerSignOff = true;
+    shift.ManagerSignOff = true;
+    if (notesInput) shift.auditNotes = notesInput.value;
+
+    ApiService.request('saveShift', { shift: shift }).then(() => {
+        closeShiftChecklistModal();
+        alert("✅ Shift audit score successfully updated and synced across dashboards!");
+        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
+        else {
+            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
+        }
+    }).catch(err => {
+        console.error("Error saving edited audit:", err);
+        closeShiftChecklistModal();
+        UIController.refreshActiveView();
+    });
 }
 function handleShiftCalendarLookup(dateVal) {
     if (!dateVal) return;
