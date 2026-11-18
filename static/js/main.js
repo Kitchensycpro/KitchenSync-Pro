@@ -515,7 +515,7 @@ function renderCookAssignmentWidget(targetId) {
         cooks = Store.employees;
     }
 
-    // Include the closing shift station keys right here in the single-select array:
+    // Complete station list including closing shift keys
     const stations = [
         { key: "range_open", label: "Range Open" },
         { key: "mid_open", label: "Mid Open" },
