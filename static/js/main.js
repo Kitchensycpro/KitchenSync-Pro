@@ -2605,10 +2605,7 @@ function renderManagerDashboard() {
             <p style="font-size: 0.85rem; color: #64748b;">Assign line positions, delegate prep duties, and review completed shift reports. Click any row to audit checklist details.</p>
         </div>
 
-        <!-- SPECIAL PROJECT WIDGET -->
-        <div id="special-project-widget-container"></div>
-
-        <!-- THE CONSOLIDATED ASSIGNMENT WIDGET (Single source of truth, no loose boxes) -->
+        <!-- THE CONSOLIDATED ASSIGNMENT WIDGET (Single source of truth for stations, prep, and special projects) -->
         <div id="mgr-cook-widget-box"></div>
         
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
@@ -2713,10 +2710,9 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
-    renderSpecialProjectWidget();
+    // renderSpecialProjectWidget(); -- removed to eliminate loose duplicate widget
     renderCookAssignmentWidget('mgr-cook-widget-box');
 }
-
 function renderCookAssignmentWidget(targetId) {
     if (!targetId) {
         const activeView = document.querySelector('.app-view.active');
