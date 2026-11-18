@@ -672,7 +672,8 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
     emp.station = stationKey;
     emp.Station = stationKey;
 
-    const todayStr = (() => {
+    // Capture the exact lookup date currently selected in the calendar view, or default to today
+    const assignmentDate = String(Store.selectedShiftDate || "").trim().split('T')[0] || (() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     })();
@@ -691,7 +692,6 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
             taskItemsText = stationSpec.items[langKey] || stationSpec.items['en'] || [];
         }
     } else if (Array.isArray(stationSpec)) {
-        // Handle case where spec is directly an array of phases/tasks
         taskItemsText = stationSpec;
     }
 
@@ -706,7 +706,7 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         empName: emp.name || emp.Name,
         role: emp.role || emp.Role || 'cook',
         station: stationKey.replace(/_/g, ' ').toUpperCase(),
-        date: todayStr,
+        date: assignmentDate, // Timestamped with actual selected date
         tasksCompleted: 0,
         totalTasks: serializedTasks.length || 15,
         scorePct: 0,
@@ -727,8 +727,8 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
     ApiService.request('saveEmployee', { employee: emp }).then(() => {
         return ApiService.request('saveShift', { shift: initialShift });
     }).then(() => {
-        alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${stationKey.replace(/_/g, ' ').toUpperCase()}!`);
-        loadGlobalAppData();
+        alert(`✅ Successfully assigned ${emp.name || emp.Name} to ${stationKey.replace(/_/g, ' ').toUpperCase()} for date ${assignmentDate}!`);
+        UIController.refreshActiveView();
     }).catch(err => {
         console.error("Error assigning cook shift:", err);
         alert("⚠️ Assignment saved locally, but cloud sync encountered an issue.");
@@ -1897,52 +1897,39 @@ function renderSpecialProjectWidget() {
     `;
 }
 
-function assignSpecialProject() {
-    const today = new Date();
-    if (today.getDay() === 0 || today.getDay() === 6) {
-        alert("❌ Error: Special project assignments are not permitted on Saturday or Sunday day shifts.");
+function assignSpecialProject(targetId) {
+    const empSelect = document.getElementById(`sel-project-employee-${targetId}`);
+    const descInput = document.getElementById(`input-project-desc-${targetId}`);
+
+    if (!empSelect || !empSelect.value || !descInput || !descInput.value.trim()) {
+        alert("Please select a cook and enter a project description.");
         return;
     }
 
-    const empIdSelect = document.getElementById('special-proj-emp');
-    const taskDescInput = document.getElementById('special-proj-desc');
-    
-    if (!empIdSelect || !taskDescInput) return;
-
-    const empId = empIdSelect.value;
-    const taskDesc = taskDescInput.value.trim();
-
-    if (!empId || !taskDesc) {
-        alert("Please select a cook and enter a task description.");
-        return;
-    }
-
-    // Find the specific employee in our local store
+    const empId = empSelect.value;
+    const projectDesc = descInput.value.trim();
     const emp = Store.employees.find(e => String(e.id || e.ID).trim() === String(empId).trim());
-    if (!emp) {
-        alert("❌ Error: Selected employee could not be found.");
-        return;
-    }
+    if (!emp) return;
 
-    // Assign project details directly to their record object
-    emp.specialProject = taskDesc;
+    const assignmentDate = String(Store.selectedShiftDate || "").trim().split('T')[0] || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
+
+    emp.specialProject = projectDesc;
+    emp.SpecialProject = projectDesc;
     emp.specialProjectStatus = "Assigned / In Progress";
+    emp.SpecialProjectStatus = "Assigned / In Progress";
+    emp.specialProjectDate = assignmentDate; // Timestamped with active lookup date
+    emp.SpecialProjectDate = assignmentDate;
 
-    // Save this specific employee record to the Google Sheet backend
-    ApiService.request('saveEmployee', { employee: emp }).then(res => {
-        if (res && res.success) {
-            alert(`✅ Special project assigned successfully to ${emp.name || emp.Name}! It will appear on their dashboard.`);
-            taskDescInput.value = '';
-            empIdSelect.value = '';
-            
-            // Immediately reload global data so state is synced across all devices
-            loadGlobalAppData();
-        } else {
-            alert("⚠️ Project saved locally, but cloud sync encountered an issue.");
-        }
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        alert(`✅ Special project assigned to ${emp.name || emp.Name} for ${assignmentDate}!`);
+        descInput.value = "";
+        UIController.refreshActiveView();
     }).catch(err => {
-        console.error("Error assigning special project:", err);
-        alert("❌ Network error connecting to backend.");
+        console.error("Error saving special project:", err);
+        UIController.refreshActiveView();
     });
 }
 function assignCooksGroup(selectIds) {
