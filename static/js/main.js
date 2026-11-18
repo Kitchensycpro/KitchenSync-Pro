@@ -2141,41 +2141,69 @@ function gmSignOffCookProject(empId) {
     });
 }
 function managerSignOffSpecialProject(empId) {
-    if (Store.role !== 'manager' && Store.role !== 'gm') {
-        alert("❌ Unauthorized: Manager or GM role required.");
-        return;
-    }
-    
-    // Find employee using robust string-trimmed property lookup
-    const targetEmpId = String(empId || "").trim();
-    const emp = Store.employees.find(e => {
-        const currentId = String(e.id || e.ID || "").trim();
-        return currentId === targetEmpId;
-    });
+    const emp = Store.employees.find(e => String(e.id || e.ID) === String(empId));
+    if (!emp) return;
 
-    if (!emp) {
-        alert("❌ Employee record not found.");
-        return;
-    }
-    
-    // Update the employee record's special project status and sign-off metadata
     emp.specialProjectStatus = "Signed Off & Completed";
-    emp.signedOffBy = Store.user ? (Store.user.name || Store.user.Name) : "Manager";
-    
-    // Send updated employee record to the Google Sheets backend
-    ApiService.request('saveEmployee', { employee: emp }).then(res => {
-        if (res && res.success) {
-            const empName = emp.name || emp.Name || "Employee";
-            alert(`✅ Special project for ${empName} has been signed off successfully!`);
-            
-            // Force an immediate global cloud reload so dashboards update instantly
-            loadGlobalAppData();
-        } else {
-            alert("⚠️ Failed to sync special project sign-off with the cloud backend.");
-        }
+    emp.SpecialProjectStatus = "Signed Off & Completed";
+
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        alert("✅ Special project successfully signed off and marked completed across all dashboards!");
+        UIController.refreshActiveView();
     }).catch(err => {
-        console.error("Error signing off special project:", err);
-        alert("❌ Network error connecting to backend while signing off project.");
+        console.error("Error signing off project:", err);
+        UIController.refreshActiveView();
+    });
+}
+function openEditProjectModal(empId) {
+    const emp = Store.employees.find(e => String(e.id || e.ID) === String(empId));
+    if (!emp) return;
+
+    const overlay = document.getElementById('shift-modal-overlay');
+    const modalBody = document.getElementById('shift-modal-body');
+    if (!overlay || !modalBody) return;
+
+    modalBody.innerHTML = `
+        <h3 style="color: #1e3a8a; margin-top: 0;">✏️ Edit Special Project Details</h3>
+        <p style="font-size: 0.85rem; color: #64748b;">Update task description or status for <strong>${emp.name || emp.Name}</strong>.</p>
+        
+        <div style="margin: 1rem 0;">
+            <label style="font-weight: 600; font-size: 0.85rem;">Project Description:</label>
+            <input type="text" id="edit-proj-desc-input" class="form-control" value="${emp.specialProject || emp.SpecialProject || ''}" style="margin-top: 5px;">
+        </div>
+        <div style="margin: 1rem 0;">
+            <label style="font-weight: 600; font-size: 0.85rem;">Status / Review Note:</label>
+            <input type="text" id="edit-proj-status-input" class="form-control" value="${emp.specialProjectStatus || emp.SpecialProjectStatus || 'Pending Review'}" style="margin-top: 5px;">
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
+            <button class="btn btn-secondary" onclick="closeShiftChecklistModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitEditedProject('${emp.id || emp.ID}')">Save Changes 💾</button>
+        </div>
+    `;
+    overlay.style.display = 'flex';
+}
+
+function submitEditedProject(empId) {
+    const descInput = document.getElementById('edit-proj-desc-input');
+    const statusInput = document.getElementById('edit-proj-status-input');
+    if (!descInput) return;
+
+    const emp = Store.employees.find(e => String(e.id || e.ID) === String(empId));
+    if (!emp) return;
+
+    emp.specialProject = descInput.value;
+    emp.SpecialProject = descInput.value;
+    emp.specialProjectStatus = statusInput ? statusInput.value : "Signed Off & Completed";
+    emp.SpecialProjectStatus = emp.specialProjectStatus;
+
+    ApiService.request('saveEmployee', { employee: emp }).then(() => {
+        closeShiftChecklistModal();
+        alert("✅ Special project successfully updated and synced across dashboards!");
+        UIController.refreshActiveView();
+    }).catch(err => {
+        console.error("Error saving edited project:", err);
+        closeShiftChecklistModal();
+        UIController.refreshActiveView();
     });
 }
 function renderMessageBoard() {
@@ -2593,36 +2621,48 @@ function renderManagerDashboard() {
         return rawDate.substring(0, 10) === lookupDate;
     });
     
-    const pendingProjects = Store.employees.filter(e => {
+    const filteredProjects = Store.employees.filter(e => {
         const proj = String(e.specialProject || e.SpecialProject || "").trim();
         const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
-        return proj !== "" && (status.includes("pending") || status.includes("completed"));
+        if (proj === "" || (!status.includes("pending") && !status.includes("completed") && !status.includes("signed off"))) return false;
+
+        const pDate = String(e.specialProjectDate || e.SpecialProjectDate || "").trim();
+        if (!pDate) return true; // fallback if date not explicitly tagged
+        return pDate.substring(0, 10) === lookupDate;
     });
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem;">
             <h3 style="color: #1e3a8a; margin-top: 0;">📊 Shift Manager Dashboard & Oversight</h3>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions, delegate prep duties, and review completed shift reports. Click any row to audit checklist details.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign line positions, delegate prep duties, and review completed shift reports.</p>
         </div>
 
-        <!-- THE CONSOLIDATED ASSIGNMENT WIDGET (Single source of truth for stations, prep, and special projects) -->
+        <!-- THE CONSOLIDATED ASSIGNMENT WIDGET -->
         <div id="mgr-cook-widget-box"></div>
         
+        <!-- PENDING SPECIAL PROJECT SIGN-OFFS WITH CALENDAR LOOKUP -->
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
-            <h4 style="color: #c2410c; margin-top: 0;">🛠️ Pending Special Project Sign-Offs</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
+                <h4 style="color: #c2410c; margin: 0;">🛠️ Pending Special Project Sign-Offs</h4>
+                <div>
+                    <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
+                    <input type="date" id="manager-project-calendar-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                </div>
+            </div>
             <table class="data-table" style="width: 100%; margin-top: 1rem;">
                 <thead>
                     <tr>
                         <th>Employee</th>
                         <th>Assigned Project / Task</th>
                         <th>Status</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${pendingProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No pending special projects requiring sign-off.</td></tr>` : pendingProjects.map(e => {
+                    ${filteredProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No projects found for ${lookupDate}.</td></tr>` : filteredProjects.map(e => {
                         const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "");
                         const isSignedOff = statusStr.toLowerCase().includes("signed off");
+                        const empId = e.id || e.ID;
 
                         return `
                             <tr>
@@ -2630,7 +2670,8 @@ function renderManagerDashboard() {
                                 <td>${e.specialProject || e.SpecialProject}</td>
                                 <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr || 'Pending Review'}</span></td>
                                 <td>
-                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${e.id || e.ID}')">Sign Off ✍️</button>`}
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${empId}')">Sign Off ✍️</button>`}
+                                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.75rem; margin-left: 4px; background: #e2e8f0;" onclick="openEditProjectModal('${empId}')">Edit ✏️</button>
                                 </td>
                             </tr>
                         `;
@@ -2639,6 +2680,7 @@ function renderManagerDashboard() {
             </table>
         </div>
 
+        <!-- TEAM SHIFT AUDITS WITH CALENDAR LOOKUP -->
         <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
                 <h4 style="color: #1e3a8a; margin: 0;">⭐ Team Shift Audits (Cooks)</h4>
@@ -2710,7 +2752,6 @@ function renderManagerDashboard() {
         <div id="message-board-container"></div>`;
         
     renderMessageBoard();
-    // renderSpecialProjectWidget(); -- removed to eliminate loose duplicate widget
     renderCookAssignmentWidget('mgr-cook-widget-box');
 }
 function renderCookAssignmentWidget(targetId) {
@@ -2900,39 +2941,12 @@ function managerSignOffShift(shiftId) {
 
     ApiService.request('saveShift', { shift: shift }).then(() => {
         alert("✅ Shift successfully audited, signed off, and marked completed across all dashboards!");
-        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
-        else {
-            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
-            if (typeof renderGMDashboard === 'function') renderGMDashboard();
-        }
+        UIController.refreshActiveView();
     }).catch(err => {
         console.error("Error syncing shift sign-off:", err);
         UIController.refreshActiveView();
     });
 }
-// Synchronized Sign-Off & Audit Editing Functions
-function managerSignOffShift(shiftId) {
-    const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
-    if (!shift) return;
-
-    shift.managerSignOff = true;
-    shift.ManagerSignOff = true;
-    shift.status = "Completed";
-    shift.Status = "Completed";
-
-    ApiService.request('saveShift', { shift: shift }).then(() => {
-        alert("✅ Shift successfully audited, signed off, and marked completed across all dashboards!");
-        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
-        else {
-            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
-            if (typeof renderGMDashboard === 'function') renderGMDashboard();
-        }
-    }).catch(err => {
-        console.error("Error syncing shift sign-off:", err);
-        UIController.refreshActiveView();
-    });
-}
-
 function openEditAuditModal(shiftId) {
     const shift = Store.shifts.find(s => String(s.id || s.ID) === String(shiftId));
     if (!shift) return;
@@ -2943,14 +2957,14 @@ function openEditAuditModal(shiftId) {
 
     modalBody.innerHTML = `
         <h3 style="color: #1e3a8a; margin-top: 0;">✏️ Edit Shift Audit Score</h3>
-        <p style="font-size: 0.85rem; color: #64748b;">Adjust compliance score and review details for <strong>${shift.empName || shift.EmpName}</strong> (${shift.station || shift.Station}).</p>
+        <p style="font-size: 0.85rem; color: #64748b;">Adjust compliance score for <strong>${shift.empName || shift.EmpName}</strong> (${shift.station || shift.Station}).</p>
         
         <div style="margin: 1rem 0;">
             <label style="font-weight: 600; font-size: 0.85rem;">Compliance Score (%):</label>
             <input type="number" id="edit-audit-score-input" class="form-control" value="${shift.scorePct || shift.ScorePct || 0}" min="0" max="100" style="margin-top: 5px;">
         </div>
         <div style="margin: 1rem 0;">
-            <label style="font-weight: 600; font-size: 0.85rem;">Audit Notes / Score Adjustment Reason:</label>
+            <label style="font-weight: 600; font-size: 0.85rem;">Audit Notes / Reason:</label>
             <textarea id="edit-audit-notes-input" class="form-control" rows="3" style="margin-top: 5px;">${shift.auditNotes || ''}</textarea>
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 1.5rem;">
@@ -2980,10 +2994,7 @@ function submitEditedAudit(shiftId) {
     ApiService.request('saveShift', { shift: shift }).then(() => {
         closeShiftChecklistModal();
         alert("✅ Shift audit score successfully updated and synced across dashboards!");
-        if (typeof loadGlobalAppData === 'function') loadGlobalAppData();
-        else {
-            if (typeof renderManagerDashboard === 'function') renderManagerDashboard();
-        }
+        UIController.refreshActiveView();
     }).catch(err => {
         console.error("Error saving edited audit:", err);
         closeShiftChecklistModal();
@@ -2994,7 +3005,6 @@ function handleShiftCalendarLookup(dateVal) {
     if (!dateVal) return;
     Store.selectedShiftDate = dateVal.trim().split('T')[0];
     
-    // Check active role and route to the correct dashboard renderer
     const currentRole = String(Store.role || (Store.user && Store.user.role) || "").trim().toLowerCase();
     
     if (currentRole === 'gm' || currentRole.includes('general')) {
