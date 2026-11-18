@@ -515,21 +515,21 @@ function renderCookAssignmentWidget(targetId) {
         cooks = Store.employees;
     }
 
-    // Stations array updated to include both opening splits and closing shifts
+    // Keys must match your CHECKLIST_SPECS keys precisely
     const stations = [
-        { key: "range_open", label: "Range Open" },
-        { key: "mid_open", label: "Mid Open" },
-        { key: "grill_fry_open", label: "Grill/Fry Open" },
-        { key: "range_mid_split_open", label: "Range/Mid-Split Open" },
-        { key: "grill_fry_mid_split_open", label: "Grill/Fry/Mid-Split Open" },
-        { key: "range_mid_split_close", label: "Range/Mid-Split Close" },
-        { key: "grill_fry_mid_split_close", label: "Grill/Fry/Mid-Split Close" }
+        { key: "range_open", label: "🍳 Range Open" },
+        { key: "mid_open", label: "🥗 Mid Open" },
+        { key: "grill_fry_open", label: "🔥 Grill/Fry Open" },
+        { key: "range_mid_split_open", label: "🍳/🥗 Range/Mid-Split Open" },
+        { key: "grill_fry_mid_split_open", label: "🔥/🥗 Grill/Fry/Mid-Split Open" },
+        { key: "range_mid_split_close", label: "🌙🍳/🥗 Range/Mid-Split Close" },
+        { key: "grill_fry_mid_split_close", label: "🌙🔥/🥗 Grill/Fry/Mid-Split Close" }
     ];
 
     container.innerHTML = `
         <div class="card" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1;">
             <h4 style="color: #1e3a8a; margin-top: 0;">👨‍🍳 Assign Cook Line Station & Shift</h4>
-            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening or closing kitchen stations.</p>
+            <p style="font-size: 0.85rem; color: #64748b;">Assign team members to specific opening, split, or closing kitchen stations.</p>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem;">
                 <div>
@@ -714,7 +714,7 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
     const stationSpec = (typeof CHECKLIST_SPECS !== 'undefined' && 
         ((CHECKLIST_SPECS[langKey] && CHECKLIST_SPECS[langKey][stationKey]) || 
          (CHECKLIST_SPECS['en'] && CHECKLIST_SPECS['en'][stationKey]) || 
-         CHECKLIST_SPECS[stationKey])) || { items: { en: [] } };
+         CHECKLIST_SPECS[stationKey])) || { items: [] };
 
     let taskItemsText = [];
     if (stationSpec.items) {
@@ -723,9 +723,15 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         } else {
             taskItemsText = stationSpec.items[langKey] || stationSpec.items['en'] || [];
         }
+    } else if (Array.isArray(stationSpec)) {
+        // Handle case where spec is directly an array of phases/tasks
+        taskItemsText = stationSpec;
     }
 
-    const serializedTasks = taskItemsText.map(tText => ({ label: tText, completed: false, checked: false }));
+    const serializedTasks = taskItemsText.map(t => {
+        const tText = typeof t === 'string' ? t : (t.desc || t.title || JSON.stringify(t));
+        return { label: tText, completed: false, checked: false };
+    });
 
     const initialShift = {
         id: `SHIFT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -748,6 +754,7 @@ function assignCookShift(targetId = 'mgr-cook-widget-box') {
         TasksCompleted: 0
     };
 
+    if (!Store.shifts) Store.shifts = [];
     Store.shifts.push(initialShift);
 
     ApiService.request('saveEmployee', { employee: emp }).then(() => {
