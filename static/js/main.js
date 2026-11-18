@@ -2621,14 +2621,12 @@ function renderManagerDashboard() {
         return rawDate.substring(0, 10) === lookupDate;
     });
     
-    const filteredProjects = Store.employees.filter(e => {
+    // Filter employees with active special projects or assigned prep duties for the audit trail
+    const auditEmployees = Store.employees.filter(e => {
         const proj = String(e.specialProject || e.SpecialProject || "").trim();
-        const status = String(e.specialProjectStatus || e.SpecialProjectStatus || "").trim().toLowerCase();
-        if (proj === "" || (!status.includes("pending") && !status.includes("completed") && !status.includes("signed off"))) return false;
-
-        const pDate = String(e.specialProjectDate || e.SpecialProjectDate || "").trim();
-        if (!pDate) return true; // fallback if date not explicitly tagged
-        return pDate.substring(0, 10) === lookupDate;
+        const prepTasks = e.assignedPrepTasks || e.AssignedPrepTasks;
+        const hasPrep = prepTasks && (Array.isArray(prepTasks) ? prepTasks.length > 0 : JSON.parse(prepTasks || '[]').length > 0);
+        return proj !== "" || hasPrep;
     });
 
     container.innerHTML = `
@@ -2640,38 +2638,56 @@ function renderManagerDashboard() {
         <!-- THE CONSOLIDATED ASSIGNMENT WIDGET -->
         <div id="mgr-cook-widget-box"></div>
         
-        <!-- PENDING SPECIAL PROJECT SIGN-OFFS WITH CALENDAR LOOKUP -->
-        <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #fdf8f6; border: 1px solid #fed7aa;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;">
-                <h4 style="color: #c2410c; margin: 0;">🛠️ Pending Special Project Sign-Offs</h4>
+        <!-- COOK SPECIAL PROJECTS & PREP DUTY AUDIT TRAIL (Unified with GM Dashboard) -->
+        <div class="card" style="margin-top: 1.5rem; margin-bottom: 1.5rem; background: #ffffff; border: 1px solid #cbd5e1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 0.5rem;">
+                <h4 style="color: #1e3a8a; margin: 0;">📋 Cook Special Projects & Prep Duty Audit Trail</h4>
                 <div>
                     <label style="font-weight: 600; font-size: 0.85rem; margin-right: 6px;">Lookup Date:</label>
-                    <input type="date" id="manager-project-calendar-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
+                    <input type="date" id="manager-audit-calendar-date" class="form-control" value="${lookupDate}" onchange="handleShiftCalendarLookup(this.value)" style="display: inline-block; width: auto; margin-bottom: 0;">
                 </div>
             </div>
-            <table class="data-table" style="width: 100%; margin-top: 1rem;">
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Review, verify dates, and sign off on delegated kitchen special projects and window prep duties.</p>
+            
+            <table class="data-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th>Employee</th>
-                        <th>Assigned Project / Task</th>
+                        <th>Date Stamped</th>
+                        <th>Cook Name</th>
+                        <th>Delegated Task / Special Project</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Audit Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredProjects.length === 0 ? `<tr><td colspan="4" style="text-align: center; color: #64748b;">No projects found for ${lookupDate}.</td></tr>` : filteredProjects.map(e => {
-                        const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "");
-                        const isSignedOff = statusStr.toLowerCase().includes("signed off");
+                    ${auditEmployees.length === 0 ? `<tr><td colspan="5" style="text-align: center; color: #64748b;">No active special projects or prep duties found for ${lookupDate}.</td></tr>` : auditEmployees.map(e => {
                         const empId = e.id || e.ID;
+                        const empName = e.name || e.Name;
+                        const projectDesc = e.specialProject || e.SpecialProject || '';
+                        const statusStr = String(e.specialProjectStatus || e.SpecialProjectStatus || "Assigned / In Progress");
+                        const isSignedOff = statusStr.toLowerCase().includes("signed off") || statusStr.toLowerCase().includes("completed");
+                        const dateStamped = e.specialProjectDate || lookupDate;
+
+                        let taskDisplay = projectDesc;
+                        const prepTasks = e.assignedPrepTasks || e.AssignedPrepTasks;
+                        if (prepTasks) {
+                            try {
+                                const parsed = typeof prepTasks === 'string' ? JSON.parse(prepTasks) : prepTasks;
+                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                    taskDisplay = projectDesc ? `${projectDesc} | Prep: ${parsed.join(', ')}` : `Prep Duties: ${parsed.join(', ')}`;
+                                }
+                            } catch(err) {}
+                        }
 
                         return `
                             <tr>
-                                <td><strong>${e.name || e.Name}</strong></td>
-                                <td>${e.specialProject || e.SpecialProject}</td>
-                                <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr || 'Pending Review'}</span></td>
+                                <td>${dateStamped}</td>
+                                <td><strong>${empName}</strong></td>
+                                <td>${taskDisplay || 'Assigned Duty'}</td>
+                                <td><span style="color: ${isSignedOff ? '#166534' : '#c2410c'}; font-weight: bold;">${statusStr}</span></td>
                                 <td>
-                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="managerSignOffSpecialProject('${empId}')">Sign Off ✍️</button>`}
-                                    <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.75rem; margin-left: 4px; background: #e2e8f0;" onclick="openEditProjectModal('${empId}')">Edit ✏️</button>
+                                    ${isSignedOff ? '<span style="color: #166534; font-weight: bold; font-size: 0.8rem;">✅ Signed Off</span>' : `<button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.75rem; background: #16a34a;" onclick="managerSignOffSpecialProject('${empId}')">Audit Sign-Off ✍️</button>`}
+                                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; margin-left: 4px; background: #e2e8f0;" onclick="openEditProjectModal('${empId}')">Edit ✏️</button>
                                 </td>
                             </tr>
                         `;
