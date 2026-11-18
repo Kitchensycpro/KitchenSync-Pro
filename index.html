@@ -244,7 +244,8 @@
             <h2>KitchenSync Pro</h2>
             <p>Enter your employee PIN or Manager Passcode</p>
             <form onsubmit="handleLogin(event)">
-                <input type="password" id="auth-password" class="form-control" placeholder="PIN / Passcode" required autofocus>
+                <!-- Updated with autocomplete attribute to clear console warnings -->
+                <input type="password" id="auth-password" class="form-control" placeholder="PIN / Passcode" autocomplete="current-password" required autofocus>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In 🚀</button>
             </form>
         </div>
@@ -285,7 +286,7 @@
             <div id="message-board-container"></div>
         </div>
 
-<!-- VIEW: COOK DASHBOARD -->
+        <!-- VIEW: COOK DASHBOARD -->
         <div id="view-cook-dashboard" class="app-view">
             <div id="cook-dashboard-content"></div>
         </div>
@@ -359,7 +360,7 @@
         </div>
     </div>
 
-    <!-- LINK THE REBUILT MAIN.JS SCRIPT -->
+    <!-- LINK THE MAIN.JS SCRIPT -->
     <script src="static/js/main.js"></script>
 </body>
 </html>
